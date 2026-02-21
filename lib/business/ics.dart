@@ -21,13 +21,19 @@ class ICSFileCreator {
 
   /// Format datetime as UTC string for .ics (YYYYMMDDTHHMMSSZ)
   String _formatDate(DateTime dt) {
-    return dt
-            .toUtc()
-            .toIso8601String()
-            .replaceAll('-', '')
-            .replaceAll(':', '')
-            .split('.')[0] +
-        'Z';
+    // return dt
+    //         .toUtc()
+    //         .toIso8601String()
+    //         .replaceAll('-', '')
+    //         .replaceAll(':', '')
+    //         .split('.')[0] +
+    //     'Z';
+
+            // Convert to UTC before generating the string — this prevents local times
+    // from being incorrectly interpreted as UTC (which causes 1h offset issues).
+    final utc = dt.toUtc();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${utc.year}${two(utc.month)}${two(utc.day)}T${two(utc.hour)}${two(utc.minute)}${two(utc.second)}Z';
   }
 
   /// Escape special characters for ICS fields
@@ -35,6 +41,7 @@ class ICSFileCreator {
     return input
         .replaceAll('\\', '\\\\')
         .replaceAll('\n', '\\n')
+        .replaceAll('\r', '')
         .replaceAll(',', '\\,')
         .replaceAll(';', '\\;');
   }

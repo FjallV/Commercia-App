@@ -11,6 +11,7 @@ import 'package:commercia/presentation/styles/themes.dart';
 import 'package:commercia/presentation/widgets/screen_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:pwa_install/pwa_install.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +25,7 @@ ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await initializeDateFormatting('de_CH');
   // TODO: Look at dotenv
   // https://supabase.com/docs/guides/api/api-keys
   // await dotenv.load();

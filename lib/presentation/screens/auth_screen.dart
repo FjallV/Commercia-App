@@ -1,4 +1,6 @@
 import 'package:commercia/main.dart';
+import 'package:commercia/app_state.dart';
+import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/screens/home_screen.dart';
 import 'package:commercia/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -12,29 +14,50 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  /*Retrieve the current user and assign the value to the _user variable. Notice that
-this page sets up a listener on the user's auth state using onAuthStateChange. */
+  final SupabaseClient supabase = Supabase.instance.client;
+  final MemberRepository _memberRepository = MemberRepository();
+
   User? _user;
+
   @override
   void initState() {
-    _getAuth();
     super.initState();
+    _getAuth();
   }
 
   Future<void> _getAuth() async {
-    setState(() {
-      _user = supabase.auth.currentUser;
-    });
-    supabase.auth.onAuthStateChange.listen((event) {
-      setState(() {
-        _user = event.session?.user;
-      });
+    await _handleUserChange(supabase.auth.currentUser);
+    supabase.auth.onAuthStateChange.listen((event) async {
+      await _handleUserChange(event.session?.user);
     });
   }
 
-  final SupabaseClient supabase = Supabase.instance.client;
+  Future<void> _handleUserChange(User? user) async {
+    if (user == null) {
+      AppState.instance.clear();
+      setState(() => _user = null);
+      return;
+    }
+
+    try {
+      final member = await _memberRepository.getMemberById(user.id);
+      AppState.instance.setMember(member);
+
+      if (mounted && member != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Willkommen, ${member.cerevis}!')),
+        );
+      }
+    } catch (e) {
+      AppState.instance.clear();
+      debugPrint('Could not fetch member data: $e');
+    }
+
+    setState(() => _user = user);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return _user == null ? StartPage() : HomeScreen();
+    return _user == null ? const StartPage() : const HomeScreen();
   }
 }
