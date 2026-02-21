@@ -86,7 +86,7 @@ class MemberRepository {
       bfam: result['bfam'],
       bfam_text: bfam_text,
       search: search,
-      image: ImageUtils.getImageLocal(cerevis, 'member'),
+      photo_url: result['photo_url'],
     );
   }
 
@@ -106,20 +106,39 @@ class MemberRepository {
     return fromRow(result);
   }
 
-  /// NOT USED!!!
-    /// Returns all members whose [bfam] field matches [cerevis].
-  /// These are the "Bierjungen" of the given member.
-  Future<List<MemberModel>> getBierjungen(String cerevis) async {
-    final results = await Supabase.instance.client
+    /// Uploads a photo to Supabase Storage and updates the member's photo_url.
+  /// Returns the public URL of the uploaded photo.
+  Future<String> uploadPhoto({
+    required String memberId,
+    required String cerevis,
+    required Uint8List bytes,
+    required String mimeType,
+  }) async {
+    final ext = mimeType.contains('png') ? 'png' : 'jpg';
+    final path = '$cerevis/photo.$ext';
+
+    await Supabase.instance.client.storage
+        .from('member-photos')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: mimeType, upsert: true),
+        );
+
+    // Generate a signed URL (1 year expiry) since bucket is private
+    final signedUrl = await Supabase.instance.client.storage
+        .from('member-photos')
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+
+    await Supabase.instance.client
         .from('members')
-        .select()
-        .eq('bfam', cerevis);
-    final members = results.map((r) => fromRow(r)).toList();
-    members.sort((a, b) => a.cerevis.compareTo(b.cerevis));
-    return members;
+        .update({'photo_url': signedUrl})
+        .eq('id', memberId);
+
+    return signedUrl;
   }
 
-    /// Updates the editable contact fields (email, mobile) for a member.
+  /// Updates the editable contact fields (email, mobile) for a member.
   /// Returns the updated [MemberModel] on success.
   Future<MemberModel> updateContactInfo({
     required String id,

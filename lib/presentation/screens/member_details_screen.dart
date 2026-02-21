@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:universal_html/html.dart' as html;
+import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MemberDetails extends StatelessWidget {
@@ -96,7 +97,7 @@ class MemberDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     final member = this.member;
     final bierjungen = allMembers
-        .where((m) => m.balt == member.cerevis)
+        .where((m) => m.bfam == member.cerevis)
         .toList();
 
     return Scaffold(
@@ -160,17 +161,32 @@ class MemberDetails extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                // Cerevis + full name
-                ListTile(
-                  title: Text(
-                    member.cerevis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w400, fontSize: 24),
-                  ),
-                  subtitle: Text(
-                    member.name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w400, fontSize: 18),
+                // Header: avatar + cerevis + name
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      MemberAvatar.large(member: member),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              member.cerevis,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w400, fontSize: 24),
+                            ),
+                            Text(
+                              member.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w400, fontSize: 18),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 // Club + Role
@@ -204,41 +220,41 @@ class MemberDetails extends StatelessWidget {
                     onTap: () =>
                         launchUrl(Uri(scheme: 'mailto', path: member.email)),
                   ),
-                // Bieralter
-                if (member.balt != null && member.balt!.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.sports_bar_outlined),
-                    title: const Text('Bieralter'),
-                    subtitle: Text(member.balt!),
-                  ),
-                // Bierjungen
-                if (bierjungen.isNotEmpty) ...[
+                // Bieraltes + Bierjungen section
+                if (member.balt != null && member.balt!.isNotEmpty || bierjungen.isNotEmpty) ...[
                   const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
-                    child: Text(
-                      'Bierjungen',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.55),
-                            letterSpacing: 0.8,
-                          ),
+                  if (member.balt != null && member.balt!.isNotEmpty) ...[
+                    _SectionLabel(label: 'Bieraltes', context: context),
+                    ListTile(
+                      title: Text(member.balt!),
+                      onTap: () {
+                        final balt = allMembers.firstWhere(
+                          (m) => m.cerevis == member.balt,
+                          orElse: () => member,
+                        );
+                        if (balt != member) {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (_) => MemberDetails(member: balt, allMembers: allMembers),
+                            ),
+                          );
+                        }
+                      },
                     ),
-                  ),
-                  ...bierjungen.map(
-                    (bj) => ListTile(
-                      leading: const Icon(Icons.person_outline),
-                      title: Text(bj.cerevis),
-                      subtitle: Text(bj.name),
-                      onTap: () => Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => MemberDetails(member: bj, allMembers: allMembers),
+                  ],
+                  if (bierjungen.isNotEmpty) ...[
+                    _SectionLabel(label: 'Bierjungen', context: context),
+                    ...bierjungen.map(
+                      (bj) => ListTile(
+                        title: Text(bj.cerevis),
+                        onTap: () => Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => MemberDetails(member: bj, allMembers: allMembers),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ],
             ),
@@ -247,6 +263,19 @@ class MemberDetails extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _SectionLabel({required String label, required BuildContext context}) {
+  return Padding(
+    padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
+    child: Text(
+      label,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
+            letterSpacing: 0.8,
+          ),
+    ),
+  );
 }
 
 AppBar appBarMemberDetails(BuildContext context) {

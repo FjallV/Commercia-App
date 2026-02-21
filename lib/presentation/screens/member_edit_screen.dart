@@ -1,7 +1,10 @@
+import 'dart:typed_data';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
+import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 class MemberEditScreen extends StatefulWidget {
   const MemberEditScreen({super.key, required this.member});
@@ -17,6 +20,10 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
 
+  // Pending photo upload
+  Uint8List? _pendingPhotoBytes;
+  String? _pendingMimeType;
+
   @override
   void initState() {
     super.initState();
@@ -31,17 +38,47 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
     super.dispose();
   }
 
+  Future<void> _pickPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      _pendingPhotoBytes = bytes;
+      _pendingMimeType = picked.mimeType ?? 'image/jpeg';
+    });
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
     try {
+      // Upload photo first if one was selected
+      if (_pendingPhotoBytes != null) {
+        final url = await MemberRepository().uploadPhoto(
+          memberId: widget.member.id,
+          cerevis: widget.member.cerevis,
+          bytes: _pendingPhotoBytes!,
+          mimeType: _pendingMimeType!,
+        );
+        widget.member.photo_url = url;
+      }
+
       final updated = await MemberRepository().updateContactInfo(
         id: widget.member.id,
-        email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
-        mobile: _mobileController.text.trim().isEmpty ? null : _mobileController.text.trim(),
+        email: _emailController.text.trim().isEmpty
+            ? null
+            : _emailController.text.trim(),
+        mobile: _mobileController.text.trim().isEmpty
+            ? null
+            : _mobileController.text.trim(),
       );
-      // Reflect changes back into the local model
       widget.member.email = updated.email;
       widget.member.mobile = updated.mobile;
       if (mounted) GoRouter.of(context).pop();
@@ -60,7 +97,7 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kontakt bearbeiten'),
+        title: const Text('Profil bearbeiten'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           style: ElevatedButton.styleFrom(
@@ -98,6 +135,53 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
             key: _formKey,
             child: Column(
               children: [
+                // ── Photo picker ─────────────────────────────────────────
+                GestureDetector(
+                  onTap: _pickPhoto,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      // Preview pending photo or current avatar
+                      _pendingPhotoBytes != null
+                          ? Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.3),
+                                  width: 2,
+                                ),
+                              ),
+                              child: ClipOval(
+                                child: Image.memory(
+                                  _pendingPhotoBytes!,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                          : MemberAvatar.large(member: widget.member),
+                      // Edit badge
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.camera_alt_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // ── Contact fields ───────────────────────────────────────
                 TextFormField(
                   controller: _mobileController,
                   decoration: const InputDecoration(
@@ -117,7 +201,7 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) {
-                    if (v == null || v.isEmpty) return null; // optional
+                    if (v == null || v.isEmpty) return null;
                     final valid = RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v);
                     return valid ? null : 'Ungültige E-Mail-Adresse';
                   },

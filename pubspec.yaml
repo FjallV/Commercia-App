@@ -47,6 +47,7 @@ dependencies:
   flutter_native_splash: ^2.4.6
   flutter_contacts: ^1.1.9+2   # native contacts on iOS/Android
   universal_html: ^2.2.4        # web blob/download API
+  image_picker: ^0.8.7+4
   #flutter_midi: ^1.0.0
 
   # The following adds the Cupertino Icons font to your application.

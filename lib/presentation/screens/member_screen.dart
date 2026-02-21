@@ -5,6 +5,7 @@ import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/styles/styles.dart';
 import 'package:commercia/presentation/widgets/screen_widgets.dart';
 import 'package:commercia/presentation/screens/member_details_screen.dart';
+import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -233,28 +234,7 @@ class UserCard extends StatelessWidget {
                 Positioned(
                   top: 16,
                   right: 16,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.transparent,
-                      border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.2),
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.person,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
+                  child: MemberAvatar.medium(member: member),
                 ),
               ],
             ),

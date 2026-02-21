@@ -19,7 +19,7 @@ class MemberModel {
   int? bfam;
   String? bfam_text;
   String search;
-  String? image;
+  String? photo_url;
 
   MemberModel({
     required this.id,
@@ -41,7 +41,7 @@ class MemberModel {
     this.bfam,
     this.bfam_text,
     required this.search,
-    this.image,
+    this.photo_url,
   });
 
   // factory MemberModel.fromMap(Map<String, dynamic> map) {
