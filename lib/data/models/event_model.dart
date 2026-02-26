@@ -5,6 +5,8 @@ class EventModel {
   DateTime? date;
   DateTime? date_start;
   DateTime? date_end;
+  DateTime? start_dt;
+  DateTime? end_dt;
   String? date_long;
   String? date_short;
   String? time_meet;
@@ -28,6 +30,7 @@ class EventModel {
   String? signup_url;
   String? details;
   String? card_text;
+  int?  club;
   bool? details_tbd;
 
   EventModel({
@@ -40,6 +43,8 @@ class EventModel {
     this.date_end,
     this.date_long,
     this.date_short,
+    this.start_dt,
+    this.end_dt,
     this.time_meet,
     this.time_start,
     this.time_end,
@@ -54,6 +59,7 @@ class EventModel {
     this.cost_ak,
     this.cost_text,
     this.tenue_text,
+    this.club,
     this.details,
     this.details_tbd,
   });

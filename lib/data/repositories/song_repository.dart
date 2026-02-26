@@ -14,6 +14,8 @@ class SongRepository {
         title: result['title'],
         lyrics: result['lyrics'] ?? '',
         search: result['search'] ?? '',
+        type: result['type'],
+        info: result['info'],
       ));
     }
 

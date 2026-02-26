@@ -3,15 +3,18 @@ class SongModel {
   String title;
   String lyrics;
   String search;
+  String? type;
+  String? info;
 
   SongModel({
     required this.id,
     required this.title,
     required this.lyrics,
     required this.search,
+    this.type,
+    this.info,
   });
 }
-
 // class SongModel {
 //   final String id;
 //   final String title;

@@ -11,6 +11,8 @@ class MemberModel {
   int? age;
   String? mobile;
   String? email;
+  String? job;
+  String? empl;
   int club;
   String club_text;
   int role;
@@ -33,6 +35,8 @@ class MemberModel {
     this.age,
     this.mobile,
     this.email,
+    this.job,
+    this.empl,
     required this.club,
     required this.club_text,
     required this.role,

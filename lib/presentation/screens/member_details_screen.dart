@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:commercia/app_state.dart';
 import 'package:commercia/data/models/member_model.dart';
+import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/screens/member_edit_screen.dart';
 import 'package:commercia/presentation/styles/styles.dart';
 import 'package:flutter/foundation.dart';
@@ -11,7 +12,7 @@ import 'package:universal_html/html.dart' as html;
 import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class MemberDetails extends StatelessWidget {
+class MemberDetails extends StatefulWidget {
   const MemberDetails({
     super.key,
     required this.member,
@@ -20,8 +21,26 @@ class MemberDetails extends StatelessWidget {
   final MemberModel member;
   final List<MemberModel> allMembers;
 
+  @override
+  State<MemberDetails> createState() => _MemberDetailsState();
+}
+
+class _MemberDetailsState extends State<MemberDetails> {
+  // Incremented after a successful edit to force the avatar to re-render
+  // with a fresh network image (busts Flutter's in-memory image cache).
+  int _avatarVersion = 0;
+
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   // ── vCard download (web) ─────────────────────────────────────────────────
   void _downloadVCard() {
+    final member = widget.member;
     final nameParts = member.name.trim().split(' ');
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
     final lastName =
@@ -55,7 +74,7 @@ class MemberDetails extends StatelessWidget {
 
   // ── Native contacts (mobile) ─────────────────────────────────────────────
   Future<void> _addToNativeContacts(BuildContext context) async {
-    final member = this.member;
+    final member = widget.member;
     if (!await FlutterContacts.requestPermission()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Kontaktzugriff verweigert.')),
@@ -93,11 +112,56 @@ class MemberDetails extends StatelessWidget {
     }
   }
 
+  Future<void> _openEdit() async {
+    final scrollOffset = _scrollController.offset;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MemberEditScreen(member: widget.member),
+      ),
+    );
+    if (!mounted) return;
+
+    // Fetch only the edited member — no need to reload the full list.
+    try {
+      final refreshed = await MemberRepository().fetchMemberById(widget.member.id);
+      if (!mounted) return;
+
+      // Evict the cached image only if the photo URL actually changed.
+      if (refreshed.photo_url != widget.member.photo_url) {
+        final oldUrl = widget.member.photo_url;
+        if (oldUrl != null && oldUrl.isNotEmpty) {
+          await NetworkImage(oldUrl).evict();
+        }
+      }
+
+      // Mutate the shared model in place so the list entry stays in sync.
+      widget.member
+        ..photo_url = refreshed.photo_url
+        ..email     = refreshed.email
+        ..mobile    = refreshed.mobile
+        ..job       = refreshed.job
+        ..empl      = refreshed.empl;
+    } catch (_) {
+      // Non-fatal: MemberEditScreen already wrote values back optimistically.
+    }
+
+    setState(() => _avatarVersion++);
+
+    // Restore scroll position after the rebuild is laid out.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(
+          scrollOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final member = this.member;
-    final bierjungen = allMembers
-        .where((m) => m.bfam == member.cerevis)
+    final member = widget.member;
+    final bierjungen = widget.allMembers
+        .where((m) => m.balt == member.cerevis)
         .toList();
 
     return Scaffold(
@@ -119,11 +183,7 @@ class MemberDetails extends StatelessWidget {
                     child: IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Bearbeiten',
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => MemberEditScreen(member: member),
-                        ),
-                      ),
+                      onPressed: _openEdit, // <-- uses the new helper
                     ),
                   ),
                 );
@@ -152,6 +212,7 @@ class MemberDetails extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: Align(
           alignment: Alignment.topCenter,
           child: Container(
@@ -161,14 +222,12 @@ class MemberDetails extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                // Header: avatar + cerevis + name
+                // Header: cerevis + name left, avatar right
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      MemberAvatar.large(member: member),
-                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,6 +244,13 @@ class MemberDetails extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                      const SizedBox(width: 16),
+                      // key forces Flutter to recreate the widget (and re-fetch
+                      // the image) whenever _avatarVersion changes after an edit.
+                      KeyedSubtree(
+                        key: ValueKey(_avatarVersion),
+                        child: MemberAvatar.large(member: member),
                       ),
                     ],
                   ),
@@ -220,22 +286,36 @@ class MemberDetails extends StatelessWidget {
                     onTap: () =>
                         launchUrl(Uri(scheme: 'mailto', path: member.email)),
                   ),
-                // Bieraltes + Bierjungen section
+                // Job + Employer
+                if ((member.job != null && member.job!.isNotEmpty) ||
+                    (member.empl != null && member.empl!.isNotEmpty))
+                  ListTile(
+                    leading: const Icon(Icons.work_outline),
+                    title: member.job != null && member.job!.isNotEmpty
+                        ? Text(member.job!)
+                        : null,
+                    subtitle: member.empl != null && member.empl!.isNotEmpty
+                        ? Text(member.empl!)
+                        : null,
+                  ),
+                // Bieralter + Bierjunge section
                 if (member.balt != null && member.balt!.isNotEmpty || bierjungen.isNotEmpty) ...[
                   const Divider(),
                   if (member.balt != null && member.balt!.isNotEmpty) ...[
-                    _SectionLabel(label: 'Bieraltes', context: context),
+                    _SectionLabel(label: 'Bieralter', context: context),
                     ListTile(
                       title: Text(member.balt!),
                       onTap: () {
-                        final balt = allMembers.firstWhere(
+                        final balt = widget.allMembers.firstWhere(
                           (m) => m.cerevis == member.balt,
                           orElse: () => member,
                         );
                         if (balt != member) {
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(
-                              builder: (_) => MemberDetails(member: balt, allMembers: allMembers),
+                              builder: (_) => MemberDetails(
+                                  member: balt,
+                                  allMembers: widget.allMembers),
                             ),
                           );
                         }
@@ -243,13 +323,15 @@ class MemberDetails extends StatelessWidget {
                     ),
                   ],
                   if (bierjungen.isNotEmpty) ...[
-                    _SectionLabel(label: 'Bierjungen', context: context),
+                    _SectionLabel(label: 'Bierjunge', context: context),
                     ...bierjungen.map(
                       (bj) => ListTile(
                         title: Text(bj.cerevis),
                         onTap: () => Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
-                            builder: (_) => MemberDetails(member: bj, allMembers: allMembers),
+                            builder: (_) => MemberDetails(
+                                member: bj,
+                                allMembers: widget.allMembers),
                           ),
                         ),
                       ),
@@ -283,14 +365,12 @@ AppBar appBarMemberDetails(BuildContext context) {
     backgroundColor: Colors.transparent,
     surfaceTintColor: Colors.transparent,
     elevation: 0,
-    leading: IconButton(
-      icon: const Icon(Icons.arrow_back),
-      style: ElevatedButton.styleFrom(
-        shape: const CircleBorder(),
-        padding: const EdgeInsets.all(5),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+    automaticallyImplyLeading: false,
+    actions: [
+      IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: () => GoRouter.of(context).pop(),
       ),
-      onPressed: () => GoRouter.of(context).pop(),
-    ),
+    ],
   );
 }

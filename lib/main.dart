@@ -11,6 +11,7 @@ import 'package:commercia/presentation/styles/themes.dart';
 import 'package:commercia/presentation/widgets/screen_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pwa_install/pwa_install.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,7 +25,9 @@ final _router = goRouter();
 ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
   await initializeDateFormatting('de_CH');
   // TODO: Look at dotenv
   // https://supabase.com/docs/guides/api/api-keys
@@ -42,9 +45,12 @@ Future<void> main() async {
     debugPrint('APP INSTALLED!');
   });
 
-  SharedPref.getThemeMode().then((mode) {
-    themeNotifier.value = mode;
-  });
+  // SharedPref.getThemeMode().then((mode) {
+  //   themeNotifier.value = mode;
+  // });
+
+  final mode = await SharedPref.getThemeMode();
+themeNotifier.value = mode;
 
   runApp(CommerciaApp()); //const
 }

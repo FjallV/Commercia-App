@@ -104,7 +104,7 @@ class EventCard extends StatelessWidget {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
             color: Theme.of(context).colorScheme.primaryContainer,
-            surfaceTintColor: Colors.transparent, // Not applied
+            surfaceTintColor: Colors.transparent,
             clipBehavior: Clip.hardEdge,
             elevation: 1,
             child: InkWell(
@@ -179,46 +179,44 @@ class EventCard extends StatelessWidget {
                                   event.card_text!,
                                   style: BodyTextStyle
                                 ),
-                              // Transform.translate(
-                              //   offset: Offset(0, 4),
-                              //   child: ImageIcon(
-                              //     AssetImage("assets/icons/event_meet2.png"),
-                              //     size: 14,
-                              //   ),
-                              //   // Icon(
-                              //   //   Icons.schedule,
-                              //   //   color: Colors.grey,
-                              //   //   size: 14,
-                              //   //   weight: 500.0,
-                              //   // )
-                              // ),
-                              //Padding(
-                                //padding: const EdgeInsets.only(left: 5),
-                                // child: Text(
-                                //   event.card_text!,
-                                //   style: BodyTextStyle
-                                // ),
-                              //),
                             ],
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                        //width: 400,
-                        padding: EdgeInsets.only(bottom: 10, right: 10),
+                    Padding(
+                        padding: EdgeInsets.only(bottom: 10, left: 12, right: 10),
                         child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              if (event.signup_url != null) ...[
+                              if (event.location != null)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 12,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      event.location!,
+                                      style: BodyTextStyle?.copyWith(fontSize: (BodyTextStyle?.fontSize ?? 14) - 2),
+                                    ),
+                                  ],
+                                )
+                              else
+                                SizedBox.shrink(),
+                              if (event.signup_url != null)
                                 ElevatedButton.icon(
                                   onPressed: () {
                                     launchUrl(Uri.parse(event.signup_url!));
                                   },
-                                  label: Text( 'Anmelden'),
+                                  label: Text('Anmelden'),
                                   icon: Icon(Icons.check),
                                 ),
-                              ],
                             ])),
                   ],
                 ),

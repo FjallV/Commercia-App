@@ -65,72 +65,112 @@ class EventDetails extends StatelessWidget {
                                     fontWeight: FontWeight.w400, fontSize: 24)),
                           ),
                         ],
-                        if (event.location_meet != null &&
-                            event.location_meet!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
+                        // Date & time + Treffpunkt — combined card
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Card(
+                            elevation: 0,
+                            color: Theme.of(context).colorScheme.surface,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
                                 color: Theme.of(context)
                                     .colorScheme
-                                    .primaryContainer,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withOpacity(0.2),
-                                  width: 1,
-                                ),
+                                    .outlineVariant,
+                                width: 1,
                               ),
+                            ),
+                            child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 20),
-                              child: Row(
+                                  vertical: 14, horizontal: 20),
+                              child: Column(
                                 children: [
-                                  Icon(Icons.meeting_room,
+                                  // Date & time row
+                                  Row(
+                                    children: [
+                                      Icon(Icons.event,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                          size: 28),
+                                      SizedBox(width: 16),
+                                      Text(
+                                        event.date_long!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                  // Treffpunkt row
+                                  if (event.location_meet != null &&
+                                      event.location_meet!.isNotEmpty) ...[
+                                    Divider(
+                                      height: 24,
                                       color: Theme.of(context)
                                           .colorScheme
-                                          .primary),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      event.card_text!,
-                                      style:
-                                          Theme.of(context).textTheme.bodyLarge,
+                                          .outlineVariant,
                                     ),
-                                  ),
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 2.0),
+                                          child: Icon(Icons.place_outlined,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                              size: 26),
+                                        ),
+                                        SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Treffpunkt",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      letterSpacing: 1.1,
+                                                    ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                event.card_text!,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
                           ),
-                        // Date & time
-                        ListTile(
-                          //TODO Gap?
-                          //horizontalTitleGap: 30,
-                          leading: Icon(Icons.schedule_outlined),
-                          title: Text(event.date_long!),
-                          subtitle: Text(event.time_text!),
                         ),
                         // Location
+                        if (event.location != null) ...[
                         ListTile(
-                          leading: Icon(Icons.place_outlined),
+                          leading: Icon(Icons.map_outlined),
                           title: Text(event.location!),
                           subtitle: Text(event.location_details!),
-                        ),
-                        // Meeting point
-                        //                         ListTile(
-                        //   leading: ImageIcon(
-                        //     AssetImage("assets/icons/event_meet2.png"),
-                        //     //color: Colors.black,
-                        //     //color: Theme.of(context).colorScheme.onSurface,
-                        //     size: 24,
-                        //   ),
-                        //   //leading: Icon(Icons.target),
-                        //   title: Text(event.location_meet!),
-                        //   subtitle: Text(event.time_meet!),
-                        // ),
-
+                        ), ],
                         // Cost
                         if (event.cost_show == 'both') ...[
                           ListTile(
@@ -182,14 +222,13 @@ AppBar appBarEventDetails(BuildContext context, String title) {
     backgroundColor: Colors.transparent,
     surfaceTintColor: Colors.transparent,
     elevation: 0,
-    leading: IconButton(
-        icon: Icon(Icons.arrow_back),
-        style: ElevatedButton.styleFrom(
-          shape: const CircleBorder(),
-          padding: const EdgeInsets.all(5),
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        ),
-        onPressed: () => GoRouter.of(context).pop()),
+    automaticallyImplyLeading: false,
+    actions: [
+      IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: () => GoRouter.of(context).pop(),
+      ),
+    ],
   );
 }
 
@@ -206,18 +245,8 @@ BottomAppBar bottomAppBar(EventModel event) {
               title: event.title,
               description: event.details ?? '',
               location: event.location!,
-              startTime: DateTime.utc(
-                  event.date!.year,
-                  event.date!.month,
-                  event.date!.day,
-                  int.parse(event.time_start!.split(':')[0]),
-                  int.parse(event.time_start!.split(':')[1])),
-              endTime: DateTime.utc(
-                  event.date!.year,
-                  event.date!.month,
-                  event.date!.day,
-                  int.parse(event.time_end!.split(':')[0]),
-                  int.parse(event.time_end!.split(':')[1])),
+              startTime: event.start_dt!,
+              endTime: event.end_dt!,
             );
 
             creator.downloadICSFile(creator.generateICSContent(),

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:flutter/material.dart';
 
@@ -23,25 +24,18 @@ class MemberAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final photoUrl = member.photo_url;
 
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Theme.of(context).colorScheme.primaryContainer,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-          width: 2,
-        ),
-      ),
-      child: ClipOval(
+    return ClipOval(
+      child: SizedBox(
+        width: radius * 2,
+        height: radius * 2,
         child: photoUrl != null && photoUrl.isNotEmpty
-            ? Image.network(
-                photoUrl,
+            ? CachedNetworkImage(
+                imageUrl: photoUrl,
                 width: radius * 2,
                 height: radius * 2,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _placeholder(context),
+                placeholder: (context, url) => _placeholder(context),
+                errorWidget: (context, url, error) => _placeholder(context),
               )
             : _placeholder(context),
       ),
@@ -49,11 +43,14 @@ class MemberAvatar extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context) {
-    return Center(
-      child: Icon(
-        Icons.person,
-        size: radius * 1.6,
-        color: Theme.of(context).colorScheme.primary,
+    return Container(
+      color: Theme.of(context).colorScheme.primary,
+      child: Center(
+        child: Icon(
+          Icons.person,
+          size: radius * 1.2,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
       ),
     );
   }

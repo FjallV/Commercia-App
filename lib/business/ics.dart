@@ -31,7 +31,7 @@ class ICSFileCreator {
 
             // Convert to UTC before generating the string — this prevents local times
     // from being incorrectly interpreted as UTC (which causes 1h offset issues).
-    final utc = dt.toUtc();
+    final utc = dt.isUtc ? dt : dt.toUtc();
     String two(int v) => v.toString().padLeft(2, '0');
     return '${utc.year}${two(utc.month)}${two(utc.day)}T${two(utc.hour)}${two(utc.minute)}${two(utc.second)}Z';
   }
@@ -70,8 +70,10 @@ class ICSFileCreator {
     final bytes = Uint8List.fromList(utf8.encode(content));
 
     // Create filename
-    String safeFilename = filename.replaceAll(RegExp(r'[\/\\\:\*\?\"\<\>\|]'), '_') + '.ics';
-    safeFilename = safeFilename.replaceAll(' ', '');
+    String safeFilename = filename
+        .replaceAll(RegExp(r'[\/\\\:\*\?\"\<\>\|]'), '_')
+        .replaceAll(' ', '');
+    if (!safeFilename.endsWith('.ics')) safeFilename += '.ics';
 
     // Wrap bytes in JSUint8Array (valid BlobPart)
     final jsBytes = bytes.toJS;

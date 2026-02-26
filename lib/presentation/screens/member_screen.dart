@@ -20,6 +20,7 @@ class _MemberScreenState extends State<MemberScreen> {
       MemberViewModel(memberRepository: MemberRepository());
   late Future<List<MemberModel>> _members;
   final searchText = ValueNotifier<String>('');
+  final ScrollController _scrollController = ScrollController();
   int _selectedClubFilter = 0; // 0 = Alle, 1 = Altherren, 2 = Aktivitas
   bool _filterCC = false;
   bool _filterAemtli = false;
@@ -28,6 +29,12 @@ class _MemberScreenState extends State<MemberScreen> {
   void initState() {
     super.initState();
     _members = getData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<List<MemberModel>> getData() async {
@@ -67,11 +74,10 @@ class _MemberScreenState extends State<MemberScreen> {
                 ),
                 const SizedBox(width: 8),
                 _ClubFilterChip(
-                  label: 'Aktivitas',
+                  label: 'Aktive',
                   selected: _selectedClubFilter == 2,
                   onSelected: (_) => setState(() => _selectedClubFilter = 2),
                 ),
-                // Divider to visually separate CC chip
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10.0),
                   child: SizedBox(
@@ -115,6 +121,7 @@ class _MemberScreenState extends State<MemberScreen> {
                       return Align(
                         alignment: Alignment.topCenter,
                         child: SingleChildScrollView(
+                          controller: _scrollController,
                           child: Column(
                             children: snapshot.data!
                                 .where((member) =>
@@ -122,10 +129,19 @@ class _MemberScreenState extends State<MemberScreen> {
                                         searchText.value.toLowerCase()) &&
                                     (_selectedClubFilter == 0 ||
                                         member.club == _selectedClubFilter) &&
-                                    (_filterCC && _filterAemtli ? member.role != 0 :
-                                        _filterCC ? (member.role >= 1 && member.role <= 5) :
-                                        _filterAemtli ? member.role > 5 : true))
-                                .map((member) => UserCard(member: member, allMembers: snapshot.data!))
+                                    (_filterCC && _filterAemtli
+                                        ? member.role != 0
+                                        : _filterCC
+                                            ? (member.role >= 1 &&
+                                                member.role <= 5)
+                                            : _filterAemtli
+                                                ? member.role > 5
+                                                : true))
+                                .map((member) => UserCard(
+                                      key: ValueKey(member.id),
+                                      member: member,
+                                      allMembers: snapshot.data!,
+                                    ))
                                 .toList(),
                           ),
                         ),
@@ -182,13 +198,24 @@ class _ClubFilterChip extends StatelessWidget {
   }
 }
 
-class UserCard extends StatelessWidget {
+class UserCard extends StatefulWidget {
   final MemberModel member;
   final List<MemberModel> allMembers;
-  const UserCard({required this.member, required this.allMembers});
+
+  const UserCard({
+    super.key,
+    required this.member,
+    required this.allMembers,
+  });
 
   @override
+  State<UserCard> createState() => _UserCardState();
+}
+
+class _UserCardState extends State<UserCard> {
+  @override
   Widget build(BuildContext context) {
+    final member = widget.member;
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
@@ -200,45 +227,56 @@ class UserCard extends StatelessWidget {
             ),
             elevation: 1,
             color: Theme.of(context).colorScheme.primaryContainer,
+            surfaceTintColor: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(15),
               onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MemberDetails(member: member, allMembers: allMembers),
-                  ),
-                );
-              },
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(member.cerevis, style: TitleTextStyle),
-                      Text(member.name, style: BodyTextStyle),
-                      const SizedBox(height: 56),
-                      Row(
-                        children: [
-                          if (member.role != 0)
-                            Icon(Icons.keyboard_double_arrow_up, size: 24),
-                          SizedBox(width: 5),
-                          Text(member.role_text),
-                        ],
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) => MemberDetails(
+                          member: member,
+                          allMembers: widget.allMembers,
+                        ),
                       ),
-                    ],
+                    )
+                    .then((_) {
+                  // Rebuild only this card to pick up any avatar change.
+                  // The model was already mutated in place by MemberDetails,
+                  // so no full list reload is needed.
+                  if (mounted) setState(() {});
+                });
+              },
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(member.cerevis, style: TitleTextStyle),
+                        Text(member.name, style: BodyTextStyle),
+                        const SizedBox(height: 56),
+                        Row(
+                          children: [
+                            if (member.role != 0)
+                              Icon(Icons.keyboard_double_arrow_up, size: 24),
+                            SizedBox(width: 5),
+                            Text(member.role_text),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: MemberAvatar.medium(member: member),
-                ),
-              ],
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: MemberAvatar.medium(member: member),
+                  ),
+                ],
+              ),
             ),
-          ),
           ),
         ),
       ),

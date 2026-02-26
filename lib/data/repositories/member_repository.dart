@@ -78,6 +78,8 @@ class MemberRepository {
       age: age.isNotEmpty ? int.tryParse(age) : null,
       mobile: result['mobile'],
       email: result['email'],
+      job: result['job'],
+      empl: result['empl'],
       club: result['club'],
       club_text: club_text,
       role: result['role'],
@@ -102,6 +104,17 @@ class MemberRepository {
         .from('members')
         .select()
         .eq('user_id', id)
+        .single();
+    return fromRow(result);
+  }
+
+  /// Fetches a single member by their primary key [id].
+  /// Used for targeted refreshes after edits — avoids reloading the full list.
+  Future<MemberModel> fetchMemberById(String id) async {
+    final result = await Supabase.instance.client
+        .from('members')
+        .select()
+        .eq('id', id)
         .single();
     return fromRow(result);
   }
@@ -144,12 +157,16 @@ class MemberRepository {
     required String id,
     required String? email,
     required String? mobile,
+    required String? job,
+    required String? empl,
   }) async {
     final result = await Supabase.instance.client
         .from('members')
         .update({
           'email': email,
           'mobile': mobile,
+          'job': job,
+          'empl': empl // TODO: Remove job/empl from DB if not used
         })
         .eq('id', id)
         .select()
