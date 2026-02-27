@@ -93,28 +93,6 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
                     color: Theme.of(context).colorScheme.onSurface,
                     height: 200,
                   ),
-                  // Commercia logo
-                  // Container(
-                  //   width: 100,
-                  //   height: 100,
-                  //   child: Material(
-                  //     // with Material
-                  //     child:
-                  //     //Image(
-                  //      // image:
-                  //       Image.asset('assets/icons/icon_launcher.png',
-                  //       color: Theme.of(context).colorScheme.onSurface,),
-                  //       //AssetImage('assets/icons/icon_launcher.png'),
-                  //       // height: 200,
-                  //       // width: 200,
-                  //    // ),
-                  //     elevation: 10.0,
-                  //     shape: RoundedRectangleBorder(
-                  //       borderRadius: BorderRadius.circular(25.0),
-                  //     ),
-                  //     clipBehavior: Clip.antiAlias,
-                  //   ),
-                  // ),
                   SizedBox(height: 100),
                   //Email field
                   TextFormField(
@@ -220,7 +198,6 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                //crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Commercia logo
                   Image.asset(
@@ -228,23 +205,6 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
                     color: Theme.of(context).colorScheme.onSurface,
                     height: 200,
                   ),
-                  // Container(
-                  //   width: 100,
-                  //   height: 100,
-                  //   child: Material(
-                  //     // with Material
-                  //     child: Image(
-                  //       image: AssetImage('assets/icons/icon_launcher.png'),
-                  //       // height: 200,
-                  //       // width: 200,
-                  //     ),
-                  //     elevation: 10.0,
-                  //     shape: RoundedRectangleBorder(
-                  //       borderRadius: BorderRadius.circular(25.0),
-                  //     ),
-                  //     clipBehavior: Clip.antiAlias,
-                  //   ),
-                  // ),
                   SizedBox(height: 100),
                   //Code field
                   TextFormField(
@@ -349,48 +309,42 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
                               _signUpLoading = true;
                             });
                             try {
-                              // Sign up with Supabase
+                              // Step 1: Check if cerevis exists
+                              final cerevisResult = await supabase
+                                  .from('members')
+                                  .select()
+                                  .ilike('cerevis', _cerevisSignUpController.text.trim());
+
+                              if (cerevisResult.isEmpty) {
+                                throw 'Cerevis nicht gefunden';
+                              }
+
+                              // Step 2: Check if cerevis is already linked to a user
+                              final existingUserId = cerevisResult.first['user_id'];
+                              if (existingUserId != null && existingUserId.toString().isNotEmpty) {
+                                throw 'Cerevis bereits mit User verlinkt';
+                              }
+
+                              // Step 3: Sign up with Supabase
                               final response = await supabase.auth.signUp(
                                 email: _emailSignUpController.text.trim(),
                                 password: _passwordSignUpController.text.trim(),
                                 emailRedirectTo:
-                                    'https://commercia-aarau.ch/app_confirmation.html', // Redirect URL after email confirmation
-
-                                // TODO options:
+                                    'https://commercia-aarau.ch/app_confirmation.html',
                               );
 
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text("Bestätigungsmail gesendet"),
-                                  //backgroundColor: Colors.green,
                                 ),
                               );
 
                               final user = response.user;
 
-                              var test = await supabase
-                                  .from('members')
-                                  .select()
-                                  .ilike('cerevis',
-                                      _cerevisSignUpController.text.trim());
-                              // .eq('cerevis',
-                              //     _cerevisSignUpController.text.trim());
-
-                              if (test.isEmpty) {
-                                //throw 'Cerevis nicht in Mitgliederliste';
-                                await supabase.from('members').insert({
-                                  'user_id': user?.id, // Link profile to user
-                                  'cerevis':
-                                      _cerevisSignUpController.text.trim(),
-                                });
-                              } else {
-                                await supabase.from('members').update({
-                                  'user_id': user?.id,
-                                }).ilike('cerevis',
-                                    _cerevisSignUpController.text.trim());
-                                // .eq('cerevis',
-                                //     _cerevisSignUpController.text.trim());
-                              }
+                              // Step 4: Link the user to the cerevis
+                              await supabase.from('members').update({
+                                'user_id': user?.id,
+                              }).ilike('cerevis', _cerevisSignUpController.text.trim());
 
                               // Reset the tab to SignIn
                               _tabController.animateTo(0);

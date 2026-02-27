@@ -26,9 +26,7 @@ class EventDetails extends StatelessWidget {
               child: Column(
                 children: [
                   Container(
-                    //TODO height/width ratio -> Fit
                     height: 300,
-                    //width: 600,
                     child: Hero(
                         tag: event.id,
                         child: Container(
@@ -167,7 +165,7 @@ class EventDetails extends StatelessWidget {
                         // Location
                         if (event.location != null) ...[
                         ListTile(
-                          leading: Icon(Icons.map_outlined),
+                          leading: Icon(Icons.location_on),
                           title: Text(event.location!),
                           subtitle: Text(event.location_details!),
                         ), ],
