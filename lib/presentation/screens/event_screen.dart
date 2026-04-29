@@ -3,7 +3,6 @@ import 'package:commercia/data/models/event_model.dart';
 import 'package:commercia/data/models/event_viewmodel.dart';
 import 'package:commercia/data/repositories/event_repository.dart';
 import 'package:commercia/presentation/styles/styles.dart';
-import 'package:commercia/presentation/widgets/screen_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 class EventScreen extends StatefulWidget {
   @override
   State<EventScreen> createState() => _EventScreenState();
+  final ValueNotifier<bool>? isSearchMode;
+  const EventScreen({super.key, this.isSearchMode});
 }
 
 class _EventScreenState extends State<EventScreen> {
@@ -18,11 +19,27 @@ class _EventScreenState extends State<EventScreen> {
       EventViewModel(eventRepository: EventRepository());
   late Future<List<EventModel>> _events;
   final searchText = ValueNotifier<String>('');
+  late final ValueNotifier<bool> _isSearchMode;
 
   @override
   void initState() {
     super.initState();
+    _isSearchMode = widget.isSearchMode ?? ValueNotifier(false);
+    _isSearchMode.addListener(() {
+      if (!_isSearchMode.value) {
+        searchText.value = '';
+      }
+    });
     _events = getData();
+  }
+
+  @override
+  void dispose() {
+    if (widget.isSearchMode == null) {
+      _isSearchMode.dispose();
+    }
+    // MemberScreen also needs: _scrollController.dispose();
+    super.dispose();
   }
 
   Future<List<EventModel>> getData() async {
@@ -41,7 +58,7 @@ class _EventScreenState extends State<EventScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: appBarEvents(context, searchText),
+      appBar: appBarEvents(context, searchText, _isSearchMode),
       body: ValueListenableBuilder(
         valueListenable: searchText,
         builder: (context, value, child) => FutureBuilder(
@@ -101,8 +118,8 @@ class EventCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
         child: Card(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15.0)),
             color: Theme.of(context).colorScheme.primaryContainer,
             surfaceTintColor: Colors.transparent,
             clipBehavior: Clip.hardEdge,
@@ -119,7 +136,6 @@ class EventCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      //width: 400,
                       height: 200,
                       child: Stack(
                         fit: StackFit.expand,
@@ -142,16 +158,16 @@ class EventCard extends StatelessWidget {
                                   height: 25,
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primaryContainer,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer,
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10.0, right: 10.0),
-                                    child: Text(
-                                      event.date_short!,
-                                      style: ChipTextStyle
-                                    ),
+                                    child: Text(event.date_short!,
+                                        style: ChipTextStyle),
                                   ),
                                 ),
                               ],
@@ -165,27 +181,22 @@ class EventCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            event.title,
-                            style: TitleTextStyle  
-                          ),
+                          Text(event.title, style: TitleTextStyle),
                           SizedBox(height: 3),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                  event.card_text!,
-                                  style: BodyTextStyle
-                                ),
+                              Text(event.card_text!, style: BodyTextStyle),
                             ],
                           ),
                         ],
                       ),
                     ),
                     Padding(
-                        padding: EdgeInsets.only(bottom: 10, left: 12, right: 10),
+                        padding:
+                            EdgeInsets.only(bottom: 10, left: 12, right: 10),
                         child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -198,12 +209,17 @@ class EventCard extends StatelessWidget {
                                     Icon(
                                       Icons.location_on,
                                       size: 12,
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                     ),
                                     SizedBox(width: 3),
                                     Text(
                                       event.location!,
-                                      style: BodyTextStyle?.copyWith(fontSize: (BodyTextStyle?.fontSize ?? 14) - 2),
+                                      style: BodyTextStyle.copyWith(
+                                          fontSize:
+                                              (BodyTextStyle.fontSize ?? 14) -
+                                                  2),
                                     ),
                                   ],
                                 )
@@ -227,13 +243,15 @@ class EventCard extends StatelessWidget {
   }
 }
 
-//TODO: 
+//TODO:
 // - Cancel search on back
 // - Dont show search when switchting screens
-AppBarWithSearchSwitch appBarEvents(
-    BuildContext context, ValueNotifier<String> searchText) {
+AppBarWithSearchSwitch appBarEvents(BuildContext context,
+    ValueNotifier<String> searchText, ValueNotifier<bool> isSearchMode) {
   return AppBarWithSearchSwitch(
-    onChanged: (text) => searchText.value = text,
+    customIsSearchModeNotifier: isSearchMode,
+    customTextNotifier: searchText,
+    //onChanged: (text) => searchText.value = text,
     clearOnClose: true,
     fieldHintText: 'Suchen',
     appBarBuilder: (context) {

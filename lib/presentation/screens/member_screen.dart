@@ -3,16 +3,15 @@ import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/data/models/member_viewmodel.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/styles/styles.dart';
-import 'package:commercia/presentation/widgets/screen_widgets.dart';
-import 'package:commercia/presentation/screens/member_details_screen.dart';
 import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class MemberScreen extends StatefulWidget {
   @override
   State<MemberScreen> createState() => _MemberScreenState();
+  final ValueNotifier<bool>? isSearchMode;
+  const MemberScreen({super.key, this.isSearchMode});
 }
 
 class _MemberScreenState extends State<MemberScreen> {
@@ -20,6 +19,7 @@ class _MemberScreenState extends State<MemberScreen> {
       MemberViewModel(memberRepository: MemberRepository());
   late Future<List<MemberModel>> _members;
   final searchText = ValueNotifier<String>('');
+  late final ValueNotifier<bool> _isSearchMode;
   final ScrollController _scrollController = ScrollController();
   int _selectedClubFilter = 0; // 0 = Alle, 1 = Altherren, 2 = Aktivitas
   bool _filterCC = false;
@@ -28,11 +28,20 @@ class _MemberScreenState extends State<MemberScreen> {
   @override
   void initState() {
     super.initState();
+    _isSearchMode = widget.isSearchMode ?? ValueNotifier(false);
+    _isSearchMode.addListener(() {
+      if (!_isSearchMode.value) {
+        searchText.value = '';
+      }
+    });
     _members = getData();
   }
 
   @override
   void dispose() {
+    if (widget.isSearchMode == null) {
+      _isSearchMode.dispose();
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -53,12 +62,13 @@ class _MemberScreenState extends State<MemberScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: appBarMembers(context, searchText),
+      appBar: appBarMembers(context, searchText, _isSearchMode),
       body: Column(
         children: [
           // Filter Chips
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
             child: Row(
               children: [
                 _ClubFilterChip(
@@ -231,22 +241,31 @@ class _UserCardState extends State<UserCard> {
             child: InkWell(
               borderRadius: BorderRadius.circular(15),
               onTap: () {
-                Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
-                        builder: (_) => MemberDetails(
-                          member: member,
-                          allMembers: widget.allMembers,
-                        ),
-                      ),
-                    )
-                    .then((_) {
-                  // Rebuild only this card to pick up any avatar change.
-                  // The model was already mutated in place by MemberDetails,
-                  // so no full list reload is needed.
+                context.pushNamed(
+                  'member_details',
+                  pathParameters: {'id': member.id},
+                  extra: widget.allMembers,
+                ).then((_) {
                   if (mounted) setState(() {});
                 });
               },
+              // onTap: () {
+              //   Navigator.of(context)
+              //       .push(
+              //         MaterialPageRoute(
+              //           builder: (_) => MemberDetails(
+              //             member: member,
+              //             allMembers: widget.allMembers,
+              //           ),
+              //         ),
+              //       )
+              //       .then((_) {
+              //     // Rebuild only this card to pick up any avatar change.
+              //     // The model was already mutated in place by MemberDetails,
+              //     // so no full list reload is needed.
+              //     if (mounted) setState(() {});
+              //   });
+              //},
               child: Stack(
                 children: [
                   Padding(
@@ -284,10 +303,12 @@ class _UserCardState extends State<UserCard> {
   }
 }
 
-AppBarWithSearchSwitch appBarMembers(
-    BuildContext context, ValueNotifier<String> searchText) {
+AppBarWithSearchSwitch appBarMembers(BuildContext context,
+    ValueNotifier<String> searchText, ValueNotifier<bool> isSearchMode) {
   return AppBarWithSearchSwitch(
-    onChanged: (text) => searchText.value = text,
+    customIsSearchModeNotifier: isSearchMode,
+    customTextNotifier: searchText,
+    // onChanged: (text) => searchText.value = text,
     clearOnClose: true,
     fieldHintText: 'Suchen',
     appBarBuilder: (context) {

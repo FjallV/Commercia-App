@@ -1,4 +1,3 @@
-import 'package:commercia/presentation/widgets/screen_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -86,8 +85,8 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                //crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Commercia circle
                   Image.asset(
                     'assets/icons/logo.png',
                     color: Theme.of(context).colorScheme.onSurface,
@@ -199,7 +198,7 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Commercia logo
+                  // Commercia circle
                   Image.asset(
                     'assets/icons/logo.png',
                     color: Theme.of(context).colorScheme.onSurface,

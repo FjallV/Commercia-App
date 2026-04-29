@@ -6,8 +6,8 @@ ThemeData get lightTheme {
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    //primarySwatch: Colors.red,
-    primarySwatch: generateMaterialColor(Palette.primaryLight),
+    primarySwatch: Colors.red,
+    //primarySwatch: generateMaterialColor(Palette.primaryLight),
     //colorScheme: colorScheme,
     scaffoldBackgroundColor: const Color(0xFFF2F2F2), // neutral light grey
     colorScheme: const ColorScheme.light(
@@ -141,9 +141,10 @@ ThemeData get darkTheme {
       shadowColor: Colors.grey,
       surfaceTintColor: Colors.transparent,
     ),
-    navigationBarTheme: const NavigationBarThemeData(
+    navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Color(0xFF121212),
         indicatorColor: Colors.transparent,
+        iconTheme: WidgetStatePropertyAll(IconThemeData(color: Colors.white.withValues(alpha: 0.85))),
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected),
     iconButtonTheme: IconButtonThemeData(
       style: ButtonStyle(

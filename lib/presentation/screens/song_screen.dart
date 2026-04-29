@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 class SongScreen extends StatefulWidget {
   @override
   State<SongScreen> createState() => _SongScreenState();
+  final ValueNotifier<bool>? isSearchMode;
+  const SongScreen({super.key, this.isSearchMode});
 }
 
 class _SongScreenState extends State<SongScreen> {
@@ -15,11 +17,26 @@ class _SongScreenState extends State<SongScreen> {
       SongViewModel(songRepository: SongRepository());
   late Future<List<SongModel>> _songs;
   final searchText = ValueNotifier<String>('');
+  late final ValueNotifier<bool> _isSearchMode;
 
   @override
   void initState() {
     super.initState();
+    _isSearchMode = widget.isSearchMode ?? ValueNotifier(false);
+    _isSearchMode.addListener(() {
+      if (!_isSearchMode.value) {
+        searchText.value = '';
+      }
+    });
     _songs = getData();
+  }
+
+  @override
+  void dispose() {
+    if (widget.isSearchMode == null) {
+      _isSearchMode.dispose();
+    }
+    super.dispose();
   }
 
   Future<List<SongModel>> getData() async {
@@ -38,7 +55,7 @@ class _SongScreenState extends State<SongScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: appBarSongs(context, searchText),
+      appBar: appBarSongs(context, searchText, _isSearchMode),
       body: ValueListenableBuilder(
         valueListenable: searchText,
         builder: (context, value, child) => FutureBuilder(
@@ -107,10 +124,12 @@ class SongItem extends StatelessWidget {
   }
 }
 
-AppBarWithSearchSwitch appBarSongs(
-    BuildContext context, ValueNotifier<String> searchText) {
+AppBarWithSearchSwitch appBarSongs(BuildContext context,
+    ValueNotifier<String> searchText, ValueNotifier<bool> isSearchMode) {
   return AppBarWithSearchSwitch(
-    onChanged: (text) => searchText.value = text,
+    customIsSearchModeNotifier: isSearchMode,
+    customTextNotifier: searchText,
+    // onChanged: (text) => searchText.value = text,
     clearOnClose: true,
     fieldHintText: 'Suchen',
     appBarBuilder: (context) {

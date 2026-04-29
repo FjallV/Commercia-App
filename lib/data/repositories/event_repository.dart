@@ -52,12 +52,11 @@ class EventRepository {
         // Cost parsing
         String cost = result['cost'].toString();
         String cost_ak = result['cost_ak'].toString();
-        String cost_text = '';
         String cost_show = '';
 
         if (cost == '0') {
           cost_show = 'dont';
-        } else if (cost_ak != null && cost_ak != '') {
+        } else if (cost_ak != 'null' && cost_ak != '0' && cost_ak != '') {
           cost = cost + ' CHF für Altherren';
           cost_ak = cost_ak + ' CHF für Aktive';
           cost_show = 'both';

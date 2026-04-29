@@ -1,21 +1,25 @@
 import 'package:commercia/business/misc.dart';
 import 'package:commercia/data/models/event_model.dart';
 import 'package:commercia/data/models/song_model.dart';
+import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/presentation/screens/auth_screen.dart';
 import 'package:commercia/presentation/screens/event_details_screen.dart';
+import 'package:commercia/presentation/screens/member_details_screen.dart';
 import 'package:commercia/presentation/screens/home_screen.dart';
 import 'package:commercia/presentation/screens/pdf_screen.dart';
 import 'package:commercia/presentation/screens/settings_screen.dart';
 import 'package:commercia/presentation/screens/song_details_screen.dart';
 import 'package:commercia/presentation/styles/themes.dart';
-import 'package:commercia/presentation/widgets/screen_widgets.dart';
+import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pwa_install/pwa_install.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:commercia/services/version_check_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:web/web.dart' as web;
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // GoRouter configuration
@@ -23,10 +27,17 @@ final _router = goRouter();
 
 // ThemeMode notifier
 ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
+final VersionCheckService versionCheckService = VersionCheckService();
 
 Future<void> main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // Alte Service Worker abräumen — wir brauchen sie nicht
+  await versionCheckService.cleanupServiceWorkers();
 
   await initializeDateFormatting('de_CH');
   // TODO: Look at dotenv
@@ -50,20 +61,57 @@ Future<void> main() async {
   // });
 
   final mode = await SharedPref.getThemeMode();
-themeNotifier.value = mode;
+  themeNotifier.value = mode;
 
   runApp(CommerciaApp()); //const
 }
 
-class CommerciaApp extends StatelessWidget with ChangeNotifier {
-  CommerciaApp({super.key}); //const
+class CommerciaApp extends StatefulWidget {
+  const CommerciaApp({super.key});
+
+  @override
+  State<CommerciaApp> createState() => _CommerciaAppState();
+}
+
+class _CommerciaAppState extends State<CommerciaApp> {
+  @override
+  void initState() {
+    super.initState();
+    versionCheckService.start();
+    versionCheckService.updateAvailable.addListener(_onUpdateAvailable);
+  }
+
+  @override
+  void dispose() {
+    versionCheckService.updateAvailable.removeListener(_onUpdateAvailable);
+    versionCheckService.stop();
+    super.dispose();
+  }
+
+void _onUpdateAvailable() {
+  if (!versionCheckService.updateAvailable.value) return;
+
+  scaffoldMessengerKey.currentState?.showSnackBar(
+    SnackBar(
+      content: const Text('Eine neue Version ist verfügbar.'),
+      duration: const Duration(days: 1),
+      behavior: SnackBarBehavior.floating,
+      action: SnackBarAction(
+        label: 'Aktualisieren',
+        onPressed: () {
+          // Snackbar weg, Notifier reset (für den Fall dass der Reload fehlschlägt)
+          scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+          versionCheckService.updateAvailable.value = false;
+          
+          versionCheckService.reloadAndUpdate();
+        },
+      ),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
-    // SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-    //   statusBarColor: Colors.blue, //or set color with: Color(0xFF0000FF)
-    //   systemNavigationBarColor: Colors.white,
-    // ));
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, themeMode, child) {
@@ -72,6 +120,7 @@ class CommerciaApp extends StatelessWidget with ChangeNotifier {
           themeMode: themeMode,
           theme: lightTheme,
           darkTheme: darkTheme,
+          scaffoldMessengerKey: scaffoldMessengerKey,
         );
       },
     );
@@ -100,6 +149,33 @@ GoRouter goRouter() {
           EventModel event = state.extra as EventModel;
           return EventDetails(
             event: event,
+          );
+        },
+      ),
+      GoRoute(
+        name: 'member_details',
+        path: '/members/details/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          final allMembers = state.extra as List<MemberModel>?;
+          // If allMembers is in memory (normal nav), find member there to avoid a fetch.
+          // On web refresh, allMembers will be null and we show a loading screen.
+          if (allMembers != null) {
+            final member = allMembers.firstWhere((m) => m.id == id);
+            return MemberDetails(member: member, allMembers: allMembers);
+          }
+          // Web refresh / deep link: fetch from Supabase.
+          return FutureBuilder<MemberModel>(
+            future: MemberRepository().fetchMemberById(id),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return MemberDetails(member: snapshot.data!, allMembers: const []);
+              }
+              if (snapshot.hasError) {
+                return Scaffold(body: Center(child: Text('Fehler beim Laden.')));
+              }
+              return Scaffold(body: Center(child: CircularProgressIndicator()));
+            },
           );
         },
       ),

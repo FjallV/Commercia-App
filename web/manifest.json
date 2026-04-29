@@ -1,6 +1,6 @@
 {
-    "name": "Commercia",
-    "short_name": "Commercia",
+    "name":"{{APP_NAME}}",
+    "short_name": "{{APP_SHORT_NAME}}",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#FFFFFF",

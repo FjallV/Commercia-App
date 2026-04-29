@@ -1,6 +1,5 @@
 import 'package:commercia/business/ics.dart';
 import 'package:commercia/data/models/event_model.dart';
-import 'package:commercia/presentation/widgets/screen_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,7 +13,7 @@ class EventDetails extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: appBarEventDetails(context, event.title),
-      bottomNavigationBar: bottomAppBar(event),
+      bottomNavigationBar: bottomAppBar(context, event),
       body: SingleChildScrollView(
         //Center(
         child: Align(
@@ -230,31 +229,54 @@ AppBar appBarEventDetails(BuildContext context, String title) {
   );
 }
 
-BottomAppBar bottomAppBar(EventModel event) {
+/// Replaces accented/special characters with ASCII equivalents
+/// so the filename is safe across all platforms.
+String _sanitizeFilename(String name) {
+  const accents =
+      'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
+      'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ';
+  const replacements =
+      'aaaaaaaceeeeiiiidnoooooouuuuyby'
+      'AAAAAAACEEEEIIIIDNOOOOOOUUUUYBY';
+
+  var result = '';
+  for (final char in name.characters) {
+    final idx = accents.indexOf(char);
+    result += idx >= 0 ? replacements[idx] : char;
+  }
+  // Remove anything that's not alphanumeric, space, dash or underscore
+  return result.replaceAll(RegExp(r'[^\w\s\-]'), '').trim().replaceAll(RegExp(r'\s+'), '_');
+}
+
+void _downloadICS(BuildContext context, EventModel event) {
+  final creator = ICSFileCreator(
+    title: event.title,
+    description: event.details ?? '',
+    location: event.location ?? 'Ort folgt',
+    startTime: event.start_dt!,
+    endTime: event.end_dt!,
+  );
+
+  final filename = '${_sanitizeFilename(event.title)}.ics';
+  creator.downloadICSFile(creator.generateICSContent(), filename: filename);
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Kalenderdatei wurde heruntergeladen. Bitte aus Downloads öffnen.'),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
+BottomAppBar bottomAppBar(BuildContext context, EventModel event) {
   return BottomAppBar(
-    child: new Row(
+    child: Row(
       mainAxisSize: MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.end,
       children: <Widget>[
         IconButton(
           icon: Icon(Icons.calendar_month),
-          onPressed: () {
-            final creator = ICSFileCreator(
-              title: event.title,
-              description: event.details ?? '',
-              location: event.location!,
-              startTime: event.start_dt!,
-              endTime: event.end_dt!,
-            );
-
-            creator.downloadICSFile(creator.generateICSContent(),
-                filename: event.title);
-
-            //  SnackBar snackBar = SnackBar(
-            //    content: Text('ICS file downloaded!'),
-            //  );
-            //snackBar.show(context);
-          },
+          onPressed: () => _downloadICS(context, event),
         ),
         if (event.signup_url != null) ...[
           IconButton(

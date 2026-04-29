@@ -1,4 +1,3 @@
-import 'package:commercia/main.dart';
 import 'package:commercia/app_state.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/screens/home_screen.dart';

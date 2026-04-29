@@ -3,7 +3,6 @@ import 'package:commercia/app_state.dart';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/screens/member_edit_screen.dart';
-import 'package:commercia/presentation/styles/styles.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -26,11 +25,29 @@ class MemberDetails extends StatefulWidget {
 }
 
 class _MemberDetailsState extends State<MemberDetails> {
+  // The currently displayed member — swapped in-place when tapping
+  // Bieralter/Bierjunge so the GoRouter stack never grows.
+  late MemberModel _current;
+
   // Incremented after a successful edit to force the avatar to re-render
   // with a fresh network image (busts Flutter's in-memory image cache).
   int _avatarVersion = 0;
 
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.member;
+  }
+
+  void _navigateTo(MemberModel member) {
+    _scrollController.jumpTo(0);
+    setState(() {
+      _current = member;
+      _avatarVersion = 0;
+    });
+  }
 
   @override
   void dispose() {
@@ -40,11 +57,10 @@ class _MemberDetailsState extends State<MemberDetails> {
 
   // ── vCard download (web) ─────────────────────────────────────────────────
   void _downloadVCard() {
-    final member = widget.member;
+    final member = _current;
     final nameParts = member.name.trim().split(' ');
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-    final lastName =
-        nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     final lines = [
       'BEGIN:VCARD',
@@ -70,11 +86,19 @@ class _MemberDetailsState extends State<MemberDetails> {
       ..setAttribute('download', '${member.cerevis}.vcf')
       ..click();
     html.Url.revokeObjectUrl(url);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Kontaktdatei wurde heruntergeladen. Bitte aus Downloads öffnen.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   // ── Native contacts (mobile) ─────────────────────────────────────────────
   Future<void> _addToNativeContacts(BuildContext context) async {
-    final member = widget.member;
+    final member = _current;
     if (!await FlutterContacts.requestPermission()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Kontaktzugriff verweigert.')),
@@ -84,8 +108,7 @@ class _MemberDetailsState extends State<MemberDetails> {
 
     final nameParts = member.name.trim().split(' ');
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-    final lastName =
-        nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     final contact = Contact()
       ..name = Name(first: firstName, last: lastName)
@@ -116,31 +139,31 @@ class _MemberDetailsState extends State<MemberDetails> {
     final scrollOffset = _scrollController.offset;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MemberEditScreen(member: widget.member),
+        builder: (_) => MemberEditScreen(member: _current),
       ),
     );
     if (!mounted) return;
 
     // Fetch only the edited member — no need to reload the full list.
     try {
-      final refreshed = await MemberRepository().fetchMemberById(widget.member.id);
+      final refreshed = await MemberRepository().fetchMemberById(_current.id);
       if (!mounted) return;
 
       // Evict the cached image only if the photo URL actually changed.
-      if (refreshed.photo_url != widget.member.photo_url) {
-        final oldUrl = widget.member.photo_url;
+      if (refreshed.photo_url != _current.photo_url) {
+        final oldUrl = _current.photo_url;
         if (oldUrl != null && oldUrl.isNotEmpty) {
           await NetworkImage(oldUrl).evict();
         }
       }
 
       // Mutate the shared model in place so the list entry stays in sync.
-      widget.member
+      _current
         ..photo_url = refreshed.photo_url
-        ..email     = refreshed.email
-        ..mobile    = refreshed.mobile
-        ..job       = refreshed.job
-        ..empl      = refreshed.empl;
+        ..email = refreshed.email
+        ..mobile = refreshed.mobile
+        ..job = refreshed.job
+        ..empl = refreshed.empl;
     } catch (_) {
       // Non-fatal: MemberEditScreen already wrote values back optimistically.
     }
@@ -159,10 +182,9 @@ class _MemberDetailsState extends State<MemberDetails> {
 
   @override
   Widget build(BuildContext context) {
-    final member = widget.member;
-    final bierjungen = widget.allMembers
-        .where((m) => m.balt == member.cerevis)
-        .toList();
+    final member = _current;
+    final bierjungen =
+        widget.allMembers.where((m) => m.balt == member.cerevis).toList();
 
     return Scaffold(
       appBar: appBarMemberDetails(context),
@@ -224,7 +246,8 @@ class _MemberDetailsState extends State<MemberDetails> {
               children: [
                 // Header: cerevis + name left, avatar right
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -299,7 +322,8 @@ class _MemberDetailsState extends State<MemberDetails> {
                         : null,
                   ),
                 // Bieralter + Bierjunge section
-                if (member.balt != null && member.balt!.isNotEmpty || bierjungen.isNotEmpty) ...[
+                if (member.balt != null && member.balt!.isNotEmpty ||
+                    bierjungen.isNotEmpty) ...[
                   const Divider(),
                   if (member.balt != null && member.balt!.isNotEmpty) ...[
                     _SectionLabel(label: 'Bieralter', context: context),
@@ -310,15 +334,7 @@ class _MemberDetailsState extends State<MemberDetails> {
                           (m) => m.cerevis == member.balt,
                           orElse: () => member,
                         );
-                        if (balt != member) {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => MemberDetails(
-                                  member: balt,
-                                  allMembers: widget.allMembers),
-                            ),
-                          );
-                        }
+                        if (balt != member) _navigateTo(balt);
                       },
                     ),
                   ],
@@ -327,13 +343,7 @@ class _MemberDetailsState extends State<MemberDetails> {
                     ...bierjungen.map(
                       (bj) => ListTile(
                         title: Text(bj.cerevis),
-                        onTap: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) => MemberDetails(
-                                member: bj,
-                                allMembers: widget.allMembers),
-                          ),
-                        ),
+                        onTap: () => _navigateTo(bj),
                       ),
                     ),
                   ],

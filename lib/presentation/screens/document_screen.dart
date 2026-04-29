@@ -31,9 +31,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
     return Scaffold(
       appBar: appBarDocuments(context, _searchText),
       body: Center(
-        //child: ConstrainedBox(
-         // constraints: BoxConstraints(maxWidth: 600),
-                  child: Container(
+        child: Container(
           width: 600,
           child: ListView(
             padding: EdgeInsets.all(16),
@@ -51,10 +49,6 @@ class _DocumentScreenState extends State<DocumentScreen> {
                         'pdf',
                         extra: data,
                       );
-                      // Hier könntest du einen PDF-Viewer öffnen, z.B. mit einem Plugin
-                      // ScaffoldMessenger.of(context).showSnackBar(
-                      //   SnackBar(content: Text('PDF öffnen: ${pdf['name']}')),
-                      // );
                     },
                   )),
               SizedBox(height: 24),
@@ -71,8 +65,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                              content:
-                                  Text('Link kann nicht geöffnet werden')),
+                              content: Text('Link kann nicht geöffnet werden')),
                         );
                       }
                     },
@@ -94,7 +87,6 @@ AppBarWithSearchSwitch appBarDocuments(
       return AppBar(
         title: Text('Dokumente'),
         actions: [
-          // AppBarSearchButton(),
           IconButton(
             icon: Icon(
               Icons.settings,

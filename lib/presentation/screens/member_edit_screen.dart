@@ -172,14 +172,14 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.member.cerevis ?? '',
+                              widget.member.cerevis,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w400,
                                 fontSize: 24,
                               ),
                             ),
                             Text(
-                              widget.member.name ?? '',
+                              widget.member.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w400,
                                 fontSize: 18,
