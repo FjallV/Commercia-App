@@ -5,19 +5,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 // import 'package:dart_ical/dart_ical.dart';
 // import 'dart:html' as html;
 
-class SharedPref{
-  
+class SharedPref {
   static void setSharedValueBool(
-      String key,
-      bool value,
-    ) async {
+    String key,
+    bool value,
+  ) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setBool(key, value);
   }
 
   static Future<bool?> getSharedValueBool(
-      String key,
-    ) async {
+    String key,
+  ) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool? value = prefs.getBool(key);
     return value;
@@ -47,25 +46,22 @@ class SharedPref{
   }
 }
 
-// void downloadCalendarEvent() {
-//   final event = ICalEvent(
-//     summary: 'My Event',
-//     description: 'Description here',
-//     start: DateTime.now(),
-//     end: DateTime.now().add(Duration(hours: 1)),
-//     location: 'Online',
-//   );
+/// Replaces accented/special characters with ASCII equivalents
+/// so the filename is safe across all platforms.
+String sanitizeString(String name) {
+  const accents = 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
+      'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ';
+  const replacements = 'aaaaaaaceeeeiiiidnoooooouuuuyby'
+      'AAAAAAACEEEEIIIIDNOOOOOOUUUUYBY';
 
-//   final calendar = ICal([event]);
-//   final calendarData = calendar.serialize();
-
-//   final bytes = utf8.encode(calendarData);
-//   final blob = html.Blob([bytes]);
-//   final url = html.Url.createObjectUrlFromBlob(blob);
-
-//   final anchor = html.AnchorElement(href: url)
-//     ..setAttribute("download", "event.ics")
-//     ..click();
-
-//   html.Url.revokeObjectUrl(url);
-// }
+  var result = '';
+  for (final char in name.characters) {
+    final idx = accents.indexOf(char);
+    result += idx >= 0 ? replacements[idx] : char;
+  }
+  // Remove anything that's not alphanumeric, space, dash or underscore
+  return result
+      .replaceAll(RegExp(r'[^\w\s\-]'), '')
+      .trim()
+      .replaceAll(RegExp(r'\s+'), '_');
+}

@@ -3,8 +3,12 @@ import 'package:commercia/data/models/event_model.dart';
 import 'package:commercia/data/models/event_viewmodel.dart';
 import 'package:commercia/data/repositories/event_repository.dart';
 import 'package:commercia/presentation/styles/styles.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:commercia/presentation/widgets/app_bar_user_avatar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EventScreen extends StatefulWidget {
@@ -20,6 +24,9 @@ class _EventScreenState extends State<EventScreen> {
   late Future<List<EventModel>> _events;
   final searchText = ValueNotifier<String>('');
   late final ValueNotifier<bool> _isSearchMode;
+  final ScrollController _scrollController = ScrollController();
+  bool _showFilters = true;
+  int _selectedClubFilter = 0; // 0 = Alle, 1 = Altherrenverband, 2 = Aktivitas
 
   @override
   void initState() {
@@ -30,7 +37,17 @@ class _EventScreenState extends State<EventScreen> {
         searchText.value = '';
       }
     });
+    _scrollController.addListener(_onScroll);
     _events = getData();
+  }
+
+  void _onScroll() {
+    final direction = _scrollController.position.userScrollDirection;
+    if (direction == ScrollDirection.reverse && _showFilters) {
+      setState(() => _showFilters = false);
+    } else if (direction == ScrollDirection.forward && !_showFilters) {
+      setState(() => _showFilters = true);
+    }
   }
 
   @override
@@ -38,7 +55,8 @@ class _EventScreenState extends State<EventScreen> {
     if (widget.isSearchMode == null) {
       _isSearchMode.dispose();
     }
-    // MemberScreen also needs: _scrollController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -55,54 +73,152 @@ class _EventScreenState extends State<EventScreen> {
     return _events;
   }
 
+  Future<void> _onRefresh() async {
+    final newEvents = viewModel.load();
+    setState(() {
+      _events = newEvents;
+    });
+    await newEvents;
+  }
+
+  bool _matchesClubFilter(EventModel event) {
+    switch (_selectedClubFilter) {
+      case 1: // Altherrenverband: club 0 or 1
+        return event.club == 0 || event.club == 1;
+      case 2: // Aktivitas: club 0 or 2
+        return event.club == 0 || event.club == 2;
+      default: // Alle
+        return true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: appBarEvents(context, searchText, _isSearchMode),
-      body: ValueListenableBuilder(
-        valueListenable: searchText,
-        builder: (context, value, child) => FutureBuilder(
-          // Future that needs to be resolved
-          // inorder to display something on the Canvas
-          future: _events,
-          builder: (context, snapshot) {
-            // Checking if future is resolved or not
-            if (snapshot.connectionState == ConnectionState.done) {
-              // If we got an error
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    '${snapshot.error} occurred',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                );
-
-                // if we got our data
-              } else if (snapshot.hasData) {
-                // Extracting data from snapshot object
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: snapshot.data!
-                          .where((event) => event.title
-                              .toLowerCase()
-                              .contains(searchText.value.toLowerCase()))
-                          .map((event) => EventCard(event: event))
-                          .toList(),
+      body: Column(
+        children: [
+          // Filter Chips
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _showFilters
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 8.0),
+                      child: Row(
+                        children: [
+                          _ClubFilterChip(
+                            label: 'Alle',
+                            selected: _selectedClubFilter == 0,
+                            onSelected: (_) =>
+                                setState(() => _selectedClubFilter = 0),
+                          ),
+                          const SizedBox(width: 8),
+                          _ClubFilterChip(
+                            label: 'Altherrenverband',
+                            selected: _selectedClubFilter == 1,
+                            onSelected: (_) =>
+                                setState(() => _selectedClubFilter = 1),
+                          ),
+                          const SizedBox(width: 8),
+                          _ClubFilterChip(
+                            label: 'Aktivitas',
+                            selected: _selectedClubFilter == 2,
+                            onSelected: (_) =>
+                                setState(() => _selectedClubFilter = 2),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ),
+          // Event List
+          Expanded(
+            child: ValueListenableBuilder(
+              valueListenable: searchText,
+              builder: (context, value, child) => FutureBuilder(
+                future: _events,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          '${snapshot.error} occurred',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      );
+                    } else if (snapshot.hasData) {
+                      return RefreshIndicator(
+                        onRefresh: _onRefresh,
+                        color: Theme.of(context).colorScheme.primary,
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Column(
+                              children: snapshot.data!
+                                  .where((event) =>
+                                      event.title.toLowerCase().contains(
+                                          searchText.value.toLowerCase()) &&
+                                      _matchesClubFilter(event))
+                                  .map((event) => EventCard(event: event))
+                                  .toList(),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                  ),
-                );
-              }
-            }
-            // Displaying LoadingSpinner to indicate waiting state
-            return Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
+                  );
+                },
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClubFilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+
+  const _ClubFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: onSelected,
+      showCheckmark: false,
+      shape: StadiumBorder(),
+      selectedColor: Theme.of(context).colorScheme.primary,
+      side: BorderSide(
+        color: selected
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.outlineVariant,
+      ),
+      labelStyle: TextStyle(
+        color: selected
+            ? Theme.of(context).colorScheme.onPrimary
+            : Theme.of(context).colorScheme.onSurface,
+        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
       ),
     );
   }
@@ -114,6 +230,15 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // event.image kann ein voller Pfad sein (z.B. 'assets/images/event/aarau.png')
+    // oder nur ein Name. Wir extrahieren den Dateinamen ohne Endung und hängen .png an.
+    final rawName = event.image!.split('/').last;
+    final baseName = rawName.contains('.')
+        ? rawName.substring(0, rawName.lastIndexOf('.'))
+        : rawName;
+    final imageUrl = Supabase.instance.client.storage
+        .from('event-photos')
+        .getPublicUrl('$baseName.png');
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
@@ -142,11 +267,28 @@ class EventCard extends StatelessWidget {
                         children: <Widget>[
                           Hero(
                             tag: event.id,
-                            child: Image(
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrl,
                               fit: BoxFit.cover,
                               alignment: Alignment.topCenter,
-                              //image: NetworkImage(item.image!),
-                              image: AssetImage(event.image!),
+                              placeholder: (context, url) => Center(
+                                child: CircularProgressIndicator(
+                                  color:
+                                      Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
+                                child: Icon(
+                                  Icons.broken_image,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  size: 48,
+                                ),
+                              ),
                             ),
                           ),
                           Positioned(
@@ -267,6 +409,7 @@ AppBarWithSearchSwitch appBarEvents(BuildContext context,
               context.pushNamed('settings');
             },
           ),
+          const AppBarUserAvatar(),
         ],
       );
     },

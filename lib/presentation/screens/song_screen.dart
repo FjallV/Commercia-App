@@ -2,6 +2,7 @@ import 'package:app_bar_with_search_switch/app_bar_with_search_switch.dart';
 import 'package:commercia/data/models/song_model.dart';
 import 'package:commercia/data/models/song_viewmodel.dart';
 import 'package:commercia/data/repositories/song_repository.dart';
+import 'package:commercia/presentation/widgets/app_bar_user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -52,6 +53,14 @@ class _SongScreenState extends State<SongScreen> {
     return _songs;
   }
 
+  Future<void> _onRefresh() async {
+    final newSongs = viewModel.load();
+    setState(() {
+      _songs = newSongs;
+    });
+    await newSongs;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,18 +86,20 @@ class _SongScreenState extends State<SongScreen> {
                 // if we got our data
               } else if (snapshot.hasData) {
                 // Extracting data from snapshot object
-                return Center(
-                  // child: SingleChildScrollView(
-                  child: ListView(
-                    //physics: NeverScrollableScrollPhysics(),
-                    children: snapshot.data!
-                        .where((song) => song.search
-                            .toLowerCase()
-                            .contains(searchText.value.toLowerCase()))
-                        .map((song) => SongItem(song: song))
-                        .toList(),
+                return RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  color: Theme.of(context).colorScheme.primary,
+                  child: Center(
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: snapshot.data!
+                          .where((song) => song.search
+                              .toLowerCase()
+                              .contains(searchText.value.toLowerCase()))
+                          .map((song) => SongItem(song: song))
+                          .toList(),
+                    ),
                   ),
-                  // ),
                 );
               }
             }
@@ -145,6 +156,7 @@ AppBarWithSearchSwitch appBarSongs(BuildContext context,
               context.pushNamed('settings');
             },
           ),
+          const AppBarUserAvatar(),
         ],
       );
     },

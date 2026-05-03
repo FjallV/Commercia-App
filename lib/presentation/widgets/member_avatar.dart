@@ -11,6 +11,9 @@ class MemberAvatar extends StatelessWidget {
     this.radius = 40,
   });
 
+  /// 12px radius — for member list cards
+  const MemberAvatar.small({super.key, required this.member}) : radius = 12; 
+
   /// 40px radius — for member list cards
   const MemberAvatar.medium({super.key, required this.member}) : radius = 40; 
 

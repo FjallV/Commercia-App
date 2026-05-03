@@ -16,9 +16,14 @@ class MemberDetails extends StatefulWidget {
     super.key,
     required this.member,
     required this.allMembers,
+    this.readOnlyRelations = false,
   });
   final MemberModel member;
   final List<MemberModel> allMembers;
+
+  /// Wenn true: Bieralter/Bierjunge werden angezeigt, aber der Tap zum
+  /// Wechseln auf das jeweilige Profil ist deaktiviert.
+  final bool readOnlyRelations;
 
   @override
   State<MemberDetails> createState() => _MemberDetailsState();
@@ -185,52 +190,49 @@ class _MemberDetailsState extends State<MemberDetails> {
     final member = _current;
     final bierjungen =
         widget.allMembers.where((m) => m.balt == member.cerevis).toList();
+    final readOnly = widget.readOnlyRelations;
 
     return Scaffold(
       appBar: appBarMemberDetails(context),
       bottomNavigationBar: BottomAppBar(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            // Edit button — only visible when viewing own profile
-            ValueListenableBuilder<MemberModel?>(
-              valueListenable: AppState.instance.member,
-              builder: (context, loggedIn, _) {
-                if (loggedIn == null || loggedIn.id != member.id) {
-                  return const SizedBox.shrink();
-                }
-                return Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      tooltip: 'Bearbeiten',
-                      onPressed: _openEdit, // <-- uses the new helper
+        child: ValueListenableBuilder<MemberModel?>(
+          valueListenable: AppState.instance.member,
+          builder: (context, loggedIn, _) {
+            final isOwnProfile = loggedIn != null && loggedIn.id == member.id;
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (isOwnProfile)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Bearbeiten',
+                    onPressed: _openEdit,
+                  )
+                else ...[
+                  if (member.mobile != null && member.mobile!.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.call_outlined),
+                      tooltip: 'Anrufen',
+                      onPressed: () =>
+                          launchUrl(Uri(scheme: 'tel', path: member.mobile)),
                     ),
+                  if (member.email != null && member.email!.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.mail_outline),
+                      tooltip: 'E-Mail senden',
+                      onPressed: () =>
+                          launchUrl(Uri(scheme: 'mailto', path: member.email)),
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.person_add_outlined),
+                    tooltip: 'Kontakt speichern',
+                    onPressed: () => _handleAddToContacts(context),
                   ),
-                );
-              },
-            ),
-            if (member.mobile != null && member.mobile!.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.call_outlined),
-                tooltip: 'Anrufen',
-                onPressed: () =>
-                    launchUrl(Uri(scheme: 'tel', path: member.mobile)),
-              ),
-            if (member.email != null && member.email!.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.mail_outline),
-                tooltip: 'E-Mail senden',
-                onPressed: () =>
-                    launchUrl(Uri(scheme: 'mailto', path: member.email)),
-              ),
-            IconButton(
-              icon: const Icon(Icons.person_add_outlined),
-              tooltip: 'Kontakt speichern',
-              onPressed: () => _handleAddToContacts(context),
-            ),
-          ],
+                ],
+              ],
+            );
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -287,12 +289,7 @@ class _MemberDetailsState extends State<MemberDetails> {
                       : null,
                 ),
                 // Birthday
-                if (member.birthday != null)
-                  ListTile(
-                    leading: const Icon(Icons.cake_outlined),
-                    title: Text(member.birthday_text!),
-                    subtitle: Text('${member.age} Jahre alt'),
-                  ),
+
                 // Mobile
                 if (member.mobile != null && member.mobile!.isNotEmpty)
                   ListTile(
@@ -308,6 +305,12 @@ class _MemberDetailsState extends State<MemberDetails> {
                     title: Text(member.email!),
                     onTap: () =>
                         launchUrl(Uri(scheme: 'mailto', path: member.email)),
+                  ),
+                if (member.birthday != null)
+                  ListTile(
+                    leading: const Icon(Icons.cake_outlined),
+                    title: Text(member.birthday_text!),
+                    subtitle: Text('${member.age} Jahre alt'),
                   ),
                 // Job + Employer
                 if ((member.job != null && member.job!.isNotEmpty) ||
@@ -329,13 +332,15 @@ class _MemberDetailsState extends State<MemberDetails> {
                     _SectionLabel(label: 'Bieralter', context: context),
                     ListTile(
                       title: Text(member.balt!),
-                      onTap: () {
-                        final balt = widget.allMembers.firstWhere(
-                          (m) => m.cerevis == member.balt,
-                          orElse: () => member,
-                        );
-                        if (balt != member) _navigateTo(balt);
-                      },
+                      onTap: readOnly
+                          ? null
+                          : () {
+                              final balt = widget.allMembers.firstWhere(
+                                (m) => m.cerevis == member.balt,
+                                orElse: () => member,
+                              );
+                              if (balt != member) _navigateTo(balt);
+                            },
                     ),
                   ],
                   if (bierjungen.isNotEmpty) ...[
@@ -343,7 +348,7 @@ class _MemberDetailsState extends State<MemberDetails> {
                     ...bierjungen.map(
                       (bj) => ListTile(
                         title: Text(bj.cerevis),
-                        onTap: () => _navigateTo(bj),
+                        onTap: readOnly ? null : () => _navigateTo(bj),
                       ),
                     ),
                   ],

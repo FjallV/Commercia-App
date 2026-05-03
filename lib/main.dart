@@ -1,4 +1,4 @@
-import 'package:commercia/business/misc.dart';
+import 'package:commercia/business/utils.dart';
 import 'package:commercia/data/models/event_model.dart';
 import 'package:commercia/data/models/song_model.dart';
 import 'package:commercia/data/models/member_model.dart';
@@ -12,6 +12,7 @@ import 'package:commercia/presentation/screens/song_details_screen.dart';
 import 'package:commercia/presentation/styles/themes.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pwa_install/pwa_install.dart';
@@ -121,6 +122,17 @@ void _onUpdateAvailable() {
           theme: lightTheme,
           darkTheme: darkTheme,
           scaffoldMessengerKey: scaffoldMessengerKey,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('de', 'CH'),
+            Locale('de'),
+            Locale('en'),
+          ],
+          locale: const Locale('de', 'CH'),
         );
       },
     );
@@ -157,19 +169,41 @@ GoRouter goRouter() {
         path: '/members/details/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          final allMembers = state.extra as List<MemberModel>?;
+          final extra = state.extra;
+
+          // extra kann sein:
+          // - List<MemberModel>  (klassischer Aufruf aus member_screen)
+          // - Map mit 'allMembers' + 'readOnlyRelations'  (Aufruf via AppBar-Avatar)
+          // - null  (Web-Refresh / Deep-Link)
+          List<MemberModel>? allMembers;
+          bool readOnly = false;
+          if (extra is Map) {
+            allMembers = (extra['allMembers'] as List?)?.cast<MemberModel>();
+            readOnly = extra['readOnlyRelations'] as bool? ?? false;
+          } else if (extra is List<MemberModel>) {
+            allMembers = extra;
+          }
+
           // If allMembers is in memory (normal nav), find member there to avoid a fetch.
           // On web refresh, allMembers will be null and we show a loading screen.
-          if (allMembers != null) {
+          if (allMembers != null && allMembers.isNotEmpty) {
             final member = allMembers.firstWhere((m) => m.id == id);
-            return MemberDetails(member: member, allMembers: allMembers);
+            return MemberDetails(
+              member: member,
+              allMembers: allMembers,
+              readOnlyRelations: readOnly,
+            );
           }
-          // Web refresh / deep link: fetch from Supabase.
+          // Web refresh / deep link / own-profile-without-list: fetch from Supabase.
           return FutureBuilder<MemberModel>(
             future: MemberRepository().fetchMemberById(id),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
-                return MemberDetails(member: snapshot.data!, allMembers: const []);
+                return MemberDetails(
+                  member: snapshot.data!,
+                  allMembers: allMembers ?? const [],
+                  readOnlyRelations: readOnly,
+                );
               }
               if (snapshot.hasError) {
                 return Scaffold(body: Center(child: Text('Fehler beim Laden.')));

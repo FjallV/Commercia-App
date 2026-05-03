@@ -1,4 +1,4 @@
-import 'package:commercia/business/misc.dart';
+import 'package:commercia/business/utils.dart';
 import 'package:commercia/main.dart';
 import 'package:commercia/presentation/widgets/screen_widgets.dart';
 import 'package:flutter/material.dart';
@@ -40,22 +40,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showDiagnose() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
+    // Diagnose direkt holen — geht schnell genug, kein Lade-Kreis nötig
     final info = await versionCheckService.diagnose();
 
     if (!mounted) return;
-    Navigator.pop(context);
 
-    final formatted = info.entries
-        .map((e) => '${e.key}:\n${e.value}\n')
-        .join('\n');
+    final formatted =
+        info.entries.map((e) => '${e.key}:\n${e.value}\n').join('\n');
 
-    if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -189,39 +181,9 @@ class VersionInfoTile extends StatelessWidget {
           title: const Text('Version'),
           subtitle: Text('App: $appVersion\nBuild: $buildVersion'),
           isThreeLine: true,
-          onTap: () {
-            onSecretTap?.call();
-            _showVersionDialog(context, appVersion, buildVersion);
-          },
+          onTap: onSecretTap,
         );
       },
-    );
-  }
-
-  void _showVersionDialog(
-      BuildContext context, String appVersion, String buildVersion) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Version'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('App', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(appVersion),
-            const SizedBox(height: 12),
-            const Text('Build', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(buildVersion),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Schliessen'),
-          ),
-        ],
-      ),
     );
   }
 }

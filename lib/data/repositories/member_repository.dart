@@ -1,4 +1,5 @@
 import 'package:commercia/business/images.dart';
+import 'package:commercia/business/utils.dart';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -39,16 +40,16 @@ class MemberRepository {
     final birthDate = new DateFormat('d. MMMM y', 'de_CH');
     DateTime? date;
     String? birthday_text;
-    if( result['birthday'] != null) date = DateTime.parse(result['birthday']);
+    if (result['birthday'] != null) date = DateTime.parse(result['birthday']);
     if (date != null) {
-      birthday_text = birthDate.format(DateTime.parse(
-            DateFormat('yyyy-MM-dd').format(date) + "T00:00:00"));
-            debugPrint('birthday_text: $birthday_text');
+      birthday_text = birthDate.format(
+          DateTime.parse(DateFormat('yyyy-MM-dd').format(date) + "T00:00:00"));
+      debugPrint('birthday_text: $birthday_text');
     }
 
     String age = '';
     if (date != null) {
-      DateTime birthDate = date;
+      //DateTime birthDate = date;
       DateTime today = DateTime.now();
       int calculatedAge = today.year - date.year;
       if (today.month < date.month ||
@@ -119,36 +120,61 @@ class MemberRepository {
     return fromRow(result);
   }
 
-    /// Uploads a photo to Supabase Storage and updates the member's photo_url.
+  /// Uploads a photo to Supabase Storage and updates the member's photo_url.
   /// Returns the public URL of the uploaded photo.
+  // Future<String> uploadPhoto({
+  //   required String memberId,
+  //   required String cerevis,
+  //   required Uint8List bytes,
+  //   required String mimeType,
+  // }) async {
+  //   final ext = mimeType.contains('png') ? 'png' : 'jpg';
+  //   final path = '$cerevis/photo.$ext';
+
+  //   await Supabase.instance.client.storage.from('member-photos').uploadBinary(
+  //         path,
+  //         bytes,
+  //         fileOptions: FileOptions(contentType: mimeType, upsert: true),
+  //       );
+
+  //   // Generate a signed URL (1 year expiry) since bucket is private
+  //   final signedUrl = await Supabase.instance.client.storage
+  //       .from('member-photos')
+  //       .createSignedUrl(path, 60 * 60 * 24 * 365);
+
+  //   await Supabase.instance.client
+  //       .from('members')
+  //       .update({'photo_url': signedUrl}).eq('id', memberId);
+
+  //   return signedUrl;
+  // }
   Future<String> uploadPhoto({
     required String memberId,
     required String cerevis,
     required Uint8List bytes,
     required String mimeType,
   }) async {
+    final cerevisSafe = sanitizeString(cerevis);
     final ext = mimeType.contains('png') ? 'png' : 'jpg';
-    final path = '$cerevis/photo.$ext';
-
-    await Supabase.instance.client.storage
-        .from('member-photos')
-        .uploadBinary(
+    final path = '$cerevisSafe/photo.$ext';
+    await Supabase.instance.client.storage.from('member-photos').uploadBinary(
           path,
           bytes,
           fileOptions: FileOptions(contentType: mimeType, upsert: true),
         );
 
-    // Generate a signed URL (1 year expiry) since bucket is private
-    final signedUrl = await Supabase.instance.client.storage
+    // Public bucket — direkte URL ohne Signing.
+    // Cache-Buster sorgt dafür, dass nach einem Re-Upload (gleicher Pfad)
+    // Browser/CDN das alte Bild nicht weiter ausliefern.
+    final baseUrl = Supabase.instance.client.storage
         .from('member-photos')
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
+        .getPublicUrl(path);
+    final publicUrl = '$baseUrl?v=${DateTime.now().millisecondsSinceEpoch}';
 
     await Supabase.instance.client
         .from('members')
-        .update({'photo_url': signedUrl})
-        .eq('id', memberId);
-
-    return signedUrl;
+        .update({'photo_url': publicUrl}).eq('id', memberId);
+    return publicUrl;
   }
 
   /// Updates the editable contact fields (email, mobile) for a member.
@@ -159,6 +185,7 @@ class MemberRepository {
     required String? mobile,
     required String? job,
     required String? empl,
+    DateTime? birthday,
   }) async {
     final result = await Supabase.instance.client
         .from('members')
@@ -166,7 +193,12 @@ class MemberRepository {
           'email': email,
           'mobile': mobile,
           'job': job,
-          'empl': empl // TODO: Remove job/empl from DB if not used
+          'empl': empl,
+          'birthday': birthday != null
+              ? '${birthday.year.toString().padLeft(4, '0')}-'
+                  '${birthday.month.toString().padLeft(2, '0')}-'
+                  '${birthday.day.toString().padLeft(2, '0')}'
+              : null,
         })
         .eq('id', id)
         .select()

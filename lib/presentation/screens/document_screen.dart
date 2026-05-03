@@ -1,4 +1,5 @@
 import 'package:app_bar_with_search_switch/app_bar_with_search_switch.dart';
+import 'package:commercia/presentation/widgets/app_bar_user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -95,6 +96,7 @@ AppBarWithSearchSwitch appBarDocuments(
               context.pushNamed('settings');
             },
           ),
+          const AppBarUserAvatar(),
         ],
       );
     },

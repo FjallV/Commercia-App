@@ -2,9 +2,11 @@ import 'package:app_bar_with_search_switch/app_bar_with_search_switch.dart';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/data/models/member_viewmodel.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
+import 'package:commercia/presentation/widgets/app_bar_user_avatar.dart';
 import 'package:commercia/presentation/styles/styles.dart';
 import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 
 class MemberScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class _MemberScreenState extends State<MemberScreen> {
   final searchText = ValueNotifier<String>('');
   late final ValueNotifier<bool> _isSearchMode;
   final ScrollController _scrollController = ScrollController();
+  bool _showFilters = true;
   int _selectedClubFilter = 0; // 0 = Alle, 1 = Altherren, 2 = Aktivitas
   bool _filterCC = false;
   bool _filterAemtli = false;
@@ -34,7 +37,17 @@ class _MemberScreenState extends State<MemberScreen> {
         searchText.value = '';
       }
     });
+    _scrollController.addListener(_onScroll);
     _members = getData();
+  }
+
+  void _onScroll() {
+    final direction = _scrollController.position.userScrollDirection;
+    if (direction == ScrollDirection.reverse && _showFilters) {
+      setState(() => _showFilters = false);
+    } else if (direction == ScrollDirection.forward && !_showFilters) {
+      setState(() => _showFilters = true);
+    }
   }
 
   @override
@@ -42,6 +55,7 @@ class _MemberScreenState extends State<MemberScreen> {
     if (widget.isSearchMode == null) {
       _isSearchMode.dispose();
     }
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
@@ -59,6 +73,14 @@ class _MemberScreenState extends State<MemberScreen> {
     return _members;
   }
 
+  Future<void> _onRefresh() async {
+    final newMembers = viewModel.load();
+    setState(() {
+      _members = newMembers;
+    });
+    await newMembers;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,50 +88,67 @@ class _MemberScreenState extends State<MemberScreen> {
       body: Column(
         children: [
           // Filter Chips
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-            child: Row(
-              children: [
-                _ClubFilterChip(
-                  label: 'Alle',
-                  selected: _selectedClubFilter == 0,
-                  onSelected: (_) => setState(() => _selectedClubFilter = 0),
-                ),
-                const SizedBox(width: 8),
-                _ClubFilterChip(
-                  label: 'Altherren',
-                  selected: _selectedClubFilter == 1,
-                  onSelected: (_) => setState(() => _selectedClubFilter = 1),
-                ),
-                const SizedBox(width: 8),
-                _ClubFilterChip(
-                  label: 'Aktive',
-                  selected: _selectedClubFilter == 2,
-                  onSelected: (_) => setState(() => _selectedClubFilter = 2),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                  child: SizedBox(
-                    height: 24,
-                    child: VerticalDivider(
-                      thickness: 1.5,
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                ),
-                _ClubFilterChip(
-                  label: 'CC',
-                  selected: _filterCC,
-                  onSelected: (val) => setState(() => _filterCC = val),
-                ),
-                const SizedBox(width: 8),
-                _ClubFilterChip(
-                  label: 'Ämtli',
-                  selected: _filterAemtli,
-                  onSelected: (val) => setState(() => _filterAemtli = val),
-                ),
-              ],
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _showFilters
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 8.0),
+                      child: Row(
+                        children: [
+                          _ClubFilterChip(
+                            label: 'Alle',
+                            selected: _selectedClubFilter == 0,
+                            onSelected: (_) =>
+                                setState(() => _selectedClubFilter = 0),
+                          ),
+                          const SizedBox(width: 8),
+                          _ClubFilterChip(
+                            label: 'Altherren',
+                            selected: _selectedClubFilter == 1,
+                            onSelected: (_) =>
+                                setState(() => _selectedClubFilter = 1),
+                          ),
+                          const SizedBox(width: 8),
+                          _ClubFilterChip(
+                            label: 'Aktive',
+                            selected: _selectedClubFilter == 2,
+                            onSelected: (_) =>
+                                setState(() => _selectedClubFilter = 2),
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 10.0),
+                            child: SizedBox(
+                              height: 24,
+                              child: VerticalDivider(
+                                thickness: 1.5,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant,
+                              ),
+                            ),
+                          ),
+                          _ClubFilterChip(
+                            label: 'CC',
+                            selected: _filterCC,
+                            onSelected: (val) =>
+                                setState(() => _filterCC = val),
+                          ),
+                          const SizedBox(width: 8),
+                          _ClubFilterChip(
+                            label: 'Ämtli',
+                            selected: _filterAemtli,
+                            onSelected: (val) =>
+                                setState(() => _filterAemtli = val),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
             ),
           ),
           // Member List
@@ -128,31 +167,37 @@ class _MemberScreenState extends State<MemberScreen> {
                         ),
                       );
                     } else if (snapshot.hasData) {
-                      return Align(
-                        alignment: Alignment.topCenter,
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          child: Column(
-                            children: snapshot.data!
-                                .where((member) =>
-                                    member.search.contains(
-                                        searchText.value.toLowerCase()) &&
-                                    (_selectedClubFilter == 0 ||
-                                        member.club == _selectedClubFilter) &&
-                                    (_filterCC && _filterAemtli
-                                        ? member.role != 0
-                                        : _filterCC
-                                            ? (member.role >= 1 &&
-                                                member.role <= 5)
-                                            : _filterAemtli
-                                                ? member.role > 5
-                                                : true))
-                                .map((member) => UserCard(
-                                      key: ValueKey(member.id),
-                                      member: member,
-                                      allMembers: snapshot.data!,
-                                    ))
-                                .toList(),
+                      return RefreshIndicator(
+                        onRefresh: _onRefresh,
+                        color: Theme.of(context).colorScheme.primary,
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Column(
+                              children: snapshot.data!
+                                  .where((member) =>
+                                      member.search.contains(
+                                          searchText.value.toLowerCase()) &&
+                                      (_selectedClubFilter == 0 ||
+                                          member.club ==
+                                              _selectedClubFilter) &&
+                                      (_filterCC && _filterAemtli
+                                          ? member.role != 0
+                                          : _filterCC
+                                              ? (member.role >= 1 &&
+                                                  member.role <= 5)
+                                              : _filterAemtli
+                                                  ? member.role > 5
+                                                  : true))
+                                  .map((member) => UserCard(
+                                        key: ValueKey(member.id),
+                                        member: member,
+                                        allMembers: snapshot.data!,
+                                      ))
+                                  .toList(),
+                            ),
                           ),
                         ),
                       );
@@ -322,6 +367,7 @@ AppBarWithSearchSwitch appBarMembers(BuildContext context,
               context.pushNamed('settings');
             },
           ),
+          const AppBarUserAvatar(),
         ],
       );
     },

@@ -1,11 +1,9 @@
-import 'package:app_bar_with_search_switch/app_bar_with_search_switch.dart';
 import 'package:commercia/presentation/screens/document_screen.dart';
 import 'package:commercia/presentation/screens/event_screen.dart';
 import 'package:commercia/presentation/screens/member_screen.dart';
 import 'package:commercia/presentation/screens/song_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:material_symbols_icons/symbols.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,11 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) {
-    // TODO: Disable search mode when switching tabs
-    // This is a workaround to disable search mode when switching tabs.
-    // AppBarWithSearchFinder.of(context)?.isSearchMode.value =
-    //     false; // Disable search mode when switching tabs
-
+    // Disable search mode when switching tabs
     _searchModes[_currentIndex].value = false; // close search on current tab
 
     setState(() {
@@ -92,14 +86,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   selectedIcon: Image.asset(
                     'assets/icons/navigationbar/event_selected.png',
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   label: 'Anlässe',
                 ),
@@ -109,14 +109,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   selectedIcon: Image.asset(
                     'assets/icons/navigationbar/member_selected.png',
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   label: 'Mitglieder',
                 ),
@@ -126,14 +132,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   selectedIcon: Image.asset(
                     'assets/icons/navigationbar/song_selected.png',
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   label: 'Kantprügel',
                 ),
@@ -143,46 +155,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   selectedIcon: Image.asset(
                     'assets/icons/navigationbar/document_selected.png',
                     width: _iconSize,
                     height: _iconSize,
                     //color: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).navigationBarTheme.iconTheme?.resolve({})?.color,
+                    color: Theme.of(context)
+                        .navigationBarTheme
+                        .iconTheme
+                        ?.resolve({})?.color,
                   ),
                   label: 'Dokumente',
                 ),
-                // const NavigationDestination(
-                //   icon: Icon(Icons.calendar_today_outlined),
-                //   selectedIcon: Icon(Icons.calendar_today),
-                //   label: 'Anlässe',
-                // ),
-                // NavigationDestination(
-                //   icon: Icon(Icons.group_outlined),
-                //   selectedIcon: Icon(Icons.group),
-                //   label: 'Mitglieder',
-                // ),
-                //   const NavigationDestination(
-                //     icon: Icon(
-                //       Symbols.book_2,
-                //       fill: 0,
-                //       opticalSize: 48,
-                //     ),
-                //     selectedIcon: Icon(
-                //       Symbols.book_2,
-                //       fill: 1,
-                //       opticalSize: 48,
-                //     ),
-                //     label: 'Kantprügel',
-                //   ),
-                //   const NavigationDestination(
-                //     icon: Icon(Icons.description_outlined),
-                //     selectedIcon: Icon(Icons.description),
-                //     label: 'Dokumente',
-                //   ),
-                //
               ],
             )));
   }

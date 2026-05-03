@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class MemberModel {
 
   String id;
@@ -47,6 +49,30 @@ class MemberModel {
     required this.search,
     this.photo_url,
   });
+
+  /// Setzt birthday inkl. abgeleiteter Felder (birthday_text, age) atomar.
+  /// Wird sowohl beim initialen Mapping als auch nach Edits verwendet,
+  /// damit es nur eine Quelle der Wahrheit für die Ableitung gibt.
+  void setBirthday(DateTime? value) {
+    birthday = value;
+    birthday_text = formatBirthday(value);
+    age = computeAge(value);
+  }
+
+  static String? formatBirthday(DateTime? d) {
+    if (d == null) return null;
+    return DateFormat('dd.MM.yyyy').format(d);
+  }
+
+  static int? computeAge(DateTime? d) {
+    if (d == null) return null;
+    final now = DateTime.now();
+    var years = now.year - d.year;
+    final hadBirthdayThisYear = (now.month > d.month) ||
+        (now.month == d.month && now.day >= d.day);
+    if (!hadBirthdayThisYear) years--;
+    return years;
+  }
 
   // factory MemberModel.fromMap(Map<String, dynamic> map) {
   //   return MemberModel(

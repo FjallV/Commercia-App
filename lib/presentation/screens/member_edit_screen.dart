@@ -1,10 +1,11 @@
-import 'dart:typed_data';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 class MemberEditScreen extends StatefulWidget {
   const MemberEditScreen({super.key, required this.member});
@@ -19,12 +20,15 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
   late final TextEditingController _mobileController;
   late final TextEditingController _jobController;
   late final TextEditingController _emplController;
+  late final TextEditingController _birthdayController;
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
 
   // Pending photo upload
   Uint8List? _pendingPhotoBytes;
   String? _pendingMimeType;
+
+  static final DateFormat _dateFormat = DateFormat('dd.MM.yyyy');
 
   @override
   void initState() {
@@ -33,6 +37,11 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
     _mobileController = TextEditingController(text: widget.member.mobile ?? '');
     _jobController = TextEditingController(text: widget.member.job ?? '');
     _emplController = TextEditingController(text: widget.member.empl ?? '');
+    _birthdayController = TextEditingController(
+      text: widget.member.birthday != null
+          ? _dateFormat.format(widget.member.birthday!)
+          : '',
+    );
   }
 
   @override
@@ -41,7 +50,38 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
     _mobileController.dispose();
     _jobController.dispose();
     _emplController.dispose();
+    _birthdayController.dispose();
     super.dispose();
+  }
+
+  /// Parsed birthday from the text controller. Returns null if empty,
+  /// throws FormatException if the value is invalid.
+  DateTime? _parseBirthday() {
+    final raw = _birthdayController.text.trim();
+    if (raw.isEmpty) return null;
+    return _dateFormat.parseStrict(raw);
+  }
+
+  Future<void> _pickBirthday() async {
+    DateTime initial;
+    try {
+      initial = _parseBirthday() ?? DateTime(2000, 1, 1);
+    } catch (_) {
+      initial = DateTime(2000, 1, 1);
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      locale: const Locale('de', 'CH'),
+    );
+    if (picked != null) {
+      setState(() {
+        _birthdayController.text = _dateFormat.format(picked);
+      });
+    }
   }
 
   Future<void> _pickPhoto() async {
@@ -100,11 +140,14 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
         empl: _emplController.text.trim().isEmpty
             ? null
             : _emplController.text.trim(),
+        birthday: _parseBirthday(),
       );
       widget.member.email = updated.email;
       widget.member.mobile = updated.mobile;
       widget.member.job = updated.job;
       widget.member.empl = updated.empl;
+      // Atomar updaten — sonst sind birthday_text und age stale.
+      widget.member.setBirthday(updated.birthday);
       if (mounted) GoRouter.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -271,6 +314,38 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
                     final valid =
                         RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v);
                     return valid ? null : 'Ungültige E-Mail-Adresse';
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _birthdayController,
+                  decoration: InputDecoration(
+                    labelText: 'Geburtstag',
+                    hintText: 'TT.MM.JJJJ',
+                    prefixIcon: const Icon(Icons.cake_outlined),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.calendar_today_outlined),
+                      tooltip: 'Datum wählen',
+                      onPressed: _pickBirthday,
+                    ),
+                    border: const OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.datetime,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    try {
+                      final parsed = _dateFormat.parseStrict(v.trim());
+                      if (parsed.isAfter(DateTime.now())) {
+                        return 'Datum liegt in der Zukunft';
+                      }
+                      return null;
+                    } catch (_) {
+                      return 'Ungültiges Datum (TT.MM.JJJJ)';
+                    }
                   },
                 ),
                 const SizedBox(height: 16),

@@ -1,4 +1,5 @@
 import 'package:commercia/business/ics.dart';
+import 'package:commercia/business/utils.dart';
 import 'package:commercia/data/models/event_model.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -163,11 +164,12 @@ class EventDetails extends StatelessWidget {
                         ),
                         // Location
                         if (event.location != null) ...[
-                        ListTile(
-                          leading: Icon(Icons.location_on),
-                          title: Text(event.location!),
-                          subtitle: Text(event.location_details!),
-                        ), ],
+                          ListTile(
+                            leading: Icon(Icons.location_on),
+                            title: Text(event.location!),
+                            subtitle: Text(event.location_details!),
+                          ),
+                        ],
                         // Cost
                         if (event.cost_show == 'both') ...[
                           ListTile(
@@ -229,24 +231,25 @@ AppBar appBarEventDetails(BuildContext context, String title) {
   );
 }
 
-/// Replaces accented/special characters with ASCII equivalents
-/// so the filename is safe across all platforms.
-String _sanitizeFilename(String name) {
-  const accents =
-      'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
-      'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ';
-  const replacements =
-      'aaaaaaaceeeeiiiidnoooooouuuuyby'
-      'AAAAAAACEEEEIIIIDNOOOOOOUUUUYBY';
+// /// Replaces accented/special characters with ASCII equivalents
+// /// so the filename is safe across all platforms.
+// String _sanitizeFilename(String name) {
+//   const accents = 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
+//       'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ';
+//   const replacements = 'aaaaaaaceeeeiiiidnoooooouuuuyby'
+//       'AAAAAAACEEEEIIIIDNOOOOOOUUUUYBY';
 
-  var result = '';
-  for (final char in name.characters) {
-    final idx = accents.indexOf(char);
-    result += idx >= 0 ? replacements[idx] : char;
-  }
-  // Remove anything that's not alphanumeric, space, dash or underscore
-  return result.replaceAll(RegExp(r'[^\w\s\-]'), '').trim().replaceAll(RegExp(r'\s+'), '_');
-}
+//   var result = '';
+//   for (final char in name.characters) {
+//     final idx = accents.indexOf(char);
+//     result += idx >= 0 ? replacements[idx] : char;
+//   }
+//   // Remove anything that's not alphanumeric, space, dash or underscore
+//   return result
+//       .replaceAll(RegExp(r'[^\w\s\-]'), '')
+//       .trim()
+//       .replaceAll(RegExp(r'\s+'), '_');
+// }
 
 void _downloadICS(BuildContext context, EventModel event) {
   final creator = ICSFileCreator(
@@ -257,12 +260,13 @@ void _downloadICS(BuildContext context, EventModel event) {
     endTime: event.end_dt!,
   );
 
-  final filename = '${_sanitizeFilename(event.title)}.ics';
+  final filename = '${sanitizeString(event.title)}.ics';
   creator.downloadICSFile(creator.generateICSContent(), filename: filename);
 
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
-      content: Text('Kalenderdatei wurde heruntergeladen. Bitte aus Downloads öffnen.'),
+      content: Text(
+          'Kalenderdatei wurde heruntergeladen. Bitte aus Downloads öffnen.'),
       behavior: SnackBarBehavior.floating,
     ),
   );
