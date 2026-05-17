@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({super.key});
@@ -175,6 +176,18 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      final email = _emailSignInController.text.trim();
+                      context.go(
+                        email.isEmpty
+                            ? '/forgot-password'
+                            : '/forgot-password?email=$email',
+                      );
+                    },
+                    child: const Text('Passwort vergessen?'),
+                  ),
                 ],
               ),
             ),
@@ -312,15 +325,18 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
                               final cerevisResult = await supabase
                                   .from('members')
                                   .select()
-                                  .ilike('cerevis', _cerevisSignUpController.text.trim());
+                                  .ilike('cerevis',
+                                      _cerevisSignUpController.text.trim());
 
                               if (cerevisResult.isEmpty) {
                                 throw 'Cerevis nicht gefunden';
                               }
 
                               // Step 2: Check if cerevis is already linked to a user
-                              final existingUserId = cerevisResult.first['user_id'];
-                              if (existingUserId != null && existingUserId.toString().isNotEmpty) {
+                              final existingUserId =
+                                  cerevisResult.first['user_id'];
+                              if (existingUserId != null &&
+                                  existingUserId.toString().isNotEmpty) {
                                 throw 'Cerevis bereits mit User verlinkt';
                               }
 
@@ -343,7 +359,8 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
                               // Step 4: Link the user to the cerevis
                               await supabase.from('members').update({
                                 'user_id': user?.id,
-                              }).ilike('cerevis', _cerevisSignUpController.text.trim());
+                              }).ilike('cerevis',
+                                  _cerevisSignUpController.text.trim());
 
                               // Reset the tab to SignIn
                               _tabController.animateTo(0);

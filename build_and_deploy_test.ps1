@@ -15,13 +15,20 @@ Get-Content $envFile | ForEach-Object {
     }
 }
 
+# === App-Identität ===
+$AppName = "Commercia Aarau Test"
+$AppShortName = "Commercia Test"
+
 # === Build ===
 $Version = Get-Date -Format "yyyyMMddHHmmss"
 $BuildDate = Get-Date -Format "o"
 
 Write-Host "[1/3] Building commercia web, version: $Version" -ForegroundColor Cyan
 
-flutter build web --release --dart-define=APP_VERSION=$Version
+flutter build web --release `
+    --dart-define=APP_VERSION=$Version `
+    --dart-define=APP_NAME=$AppName `
+    --dart-define=APP_SHORT_NAME=$AppShortName
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red
@@ -38,10 +45,7 @@ $VersionJson | Out-File -FilePath "build/web/build_info.json" -Encoding utf8 -No
 
 Write-Host "[2/3] Build erfolgreich. Version: $Version" -ForegroundColor Green
 
-# === Platzhalter ersetzen ===
-$AppName = "Commercia Aarau Test"
-$AppShortName = "Commercia Test"
-
+# === Platzhalter in index.html / manifest.json ersetzen ===
 Write-Host "Setting app name: $AppName" -ForegroundColor Cyan
 
 $indexPath = "build/web/index.html"
@@ -95,7 +99,7 @@ try {
     }
     
     Write-Host "Deployment erfolgreich!" -ForegroundColor Green
-    Write-Host "Version $Version ist jetzt live." -ForegroundColor Green
+    Write-Host "Testversion $Version ist jetzt live." -ForegroundColor Green
 }
 finally {
     Remove-Item $tempScript -ErrorAction SilentlyContinue

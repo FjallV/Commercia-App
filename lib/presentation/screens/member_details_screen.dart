@@ -353,6 +353,27 @@ class _MemberDetailsState extends State<MemberDetails> {
                     ),
                   ],
                 ],
+                // Bierfamilie + Farbenbruder section
+                if ((member.bfam_text != null &&
+                        member.bfam_text!.isNotEmpty) ||
+                    (member.farbenbruder != null &&
+                        member.farbenbruder!.isNotEmpty)) ...[
+                  const Divider(),
+                  if (member.bfam_text != null &&
+                      member.bfam_text!.isNotEmpty) ...[
+                    _SectionLabel(label: 'Bierfamilie', context: context),
+                    ListTile(
+                      title: Text(member.bfam_text!),
+                    ),
+                  ],
+                  if (member.farbenbruder != null &&
+                      member.farbenbruder!.isNotEmpty) ...[
+                    _SectionLabel(label: 'Farbenbruder', context: context),
+                    ListTile(
+                      title: Text(member.farbenbruder!),
+                    ),
+                  ],
+                ],
               ],
             ),
           ),

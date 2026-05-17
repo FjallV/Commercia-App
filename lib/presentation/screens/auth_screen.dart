@@ -48,12 +48,6 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       final member = await _memberRepository.getMemberById(user.id);
       AppState.instance.setMember(member);
-
-      // if (mounted && member != null) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(content: Text('Willkommen, ${member.cerevis}!')),
-      //   );
-      // }
     } catch (e) {
       AppState.instance.clear();
       debugPrint('Could not fetch member data: $e');

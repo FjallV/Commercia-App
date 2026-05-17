@@ -22,6 +22,7 @@ class MemberModel {
   String? balt;
   int? bfam;
   String? bfam_text;
+  String? farbenbruder;
   String search;
   String? photo_url;
 
@@ -48,6 +49,7 @@ class MemberModel {
     this.bfam_text,
     required this.search,
     this.photo_url,
+    this.farbenbruder,
   });
 
   /// Setzt birthday inkl. abgeleiteter Felder (birthday_text, age) atomar.

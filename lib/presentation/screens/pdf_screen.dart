@@ -13,7 +13,6 @@ class PdfScreen extends StatelessWidget {
     return Scaffold(
       appBar: appBarDetails(context, name),
       body: PdfViewer.asset(path,
-      // TODO: Background color of scaffold
       params: PdfViewerParams(
          backgroundColor: Theme.of(context).scaffoldBackgroundColor
       ),

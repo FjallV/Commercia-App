@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:commercia/business/utils.dart';
 import 'package:commercia/data/models/event_model.dart';
 import 'package:commercia/data/models/song_model.dart';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/presentation/screens/auth_screen.dart';
 import 'package:commercia/presentation/screens/event_details_screen.dart';
+import 'package:commercia/presentation/screens/forgot_password_screen.dart';
 import 'package:commercia/presentation/screens/member_details_screen.dart';
 import 'package:commercia/presentation/screens/home_screen.dart';
 import 'package:commercia/presentation/screens/pdf_screen.dart';
+import 'package:commercia/presentation/screens/reset_password_screen.dart';
 import 'package:commercia/presentation/screens/settings_screen.dart';
 import 'package:commercia/presentation/screens/song_details_screen.dart';
 import 'package:commercia/presentation/styles/themes.dart';
@@ -32,6 +36,7 @@ final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
 final VersionCheckService versionCheckService = VersionCheckService();
+late final StreamSubscription<AuthState> _authSubscription;
 
 Future<void> main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -80,36 +85,49 @@ class _CommerciaAppState extends State<CommerciaApp> {
     super.initState();
     versionCheckService.start();
     versionCheckService.updateAvailable.addListener(_onUpdateAvailable);
+
+    // Password Reset Listener registrieren
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) {
+        if (data.event == AuthChangeEvent.passwordRecovery) {
+          // Router-Key braucht's, weil context evtl. noch nicht im Tree ist
+          _router.go('/reset-password');
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
     versionCheckService.updateAvailable.removeListener(_onUpdateAvailable);
     versionCheckService.stop();
+
+    // Password Reset Listener abmelden
+    _authSubscription.cancel();
     super.dispose();
   }
 
-void _onUpdateAvailable() {
-  if (!versionCheckService.updateAvailable.value) return;
+  void _onUpdateAvailable() {
+    if (!versionCheckService.updateAvailable.value) return;
 
-  scaffoldMessengerKey.currentState?.showSnackBar(
-    SnackBar(
-      content: const Text('Eine neue Version ist verfügbar.'),
-      duration: const Duration(days: 1),
-      behavior: SnackBarBehavior.floating,
-      action: SnackBarAction(
-        label: 'Aktualisieren',
-        onPressed: () {
-          // Snackbar weg, Notifier reset (für den Fall dass der Reload fehlschlägt)
-          scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
-          versionCheckService.updateAvailable.value = false;
-          
-          versionCheckService.reloadAndUpdate();
-        },
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: const Text('Eine neue Version ist verfügbar.'),
+        duration: const Duration(days: 1),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Aktualisieren',
+          onPressed: () {
+            // Snackbar weg, Notifier reset (für den Fall dass der Reload fehlschlägt)
+            scaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+            versionCheckService.updateAvailable.value = false;
+
+            versionCheckService.reloadAndUpdate();
+          },
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +224,8 @@ GoRouter goRouter() {
                 );
               }
               if (snapshot.hasError) {
-                return Scaffold(body: Center(child: Text('Fehler beim Laden.')));
+                return Scaffold(
+                    body: Center(child: Text('Fehler beim Laden.')));
               }
               return Scaffold(body: Center(child: CircularProgressIndicator()));
             },
@@ -237,6 +256,16 @@ GoRouter goRouter() {
           Map<String, dynamic> data = state.extra as Map<String, dynamic>;
           return PdfScreen(name: data['name'], path: data['path']);
         },
+      ),
+      GoRoute(
+  path: '/forgot-password',
+  builder: (context, state) => ForgotPasswordScreen(
+    initialEmail: state.uri.queryParameters['email'],
+  ),
+),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => const ResetPasswordScreen(),
       ),
     ],
   );

@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:commercia/app_state.dart';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
 import 'package:commercia/presentation/widgets/member_avatar.dart';
@@ -107,23 +110,26 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
     try {
       // Upload photo first if one was selected
       if (_pendingPhotoBytes != null) {
-        final signedUrl = await MemberRepository().uploadPhoto(
+        // Alte URL merken — die wollen wir nach erfolgreichem Upload aus
+        // allen Caches verbannen.
+        final oldUrl = widget.member.photo_url;
+
+        final newUrl = await MemberRepository().uploadPhoto(
           memberId: widget.member.id,
           cerevis: widget.member.cerevis,
           bytes: _pendingPhotoBytes!,
           mimeType: _pendingMimeType!,
         );
 
-        // Evict the old URL from Flutter's image cache so the details screen
-        // doesn't serve the stale bitmap when it rebuilds with the new URL.
-        final oldUrl = widget.member.photo_url;
+        // 1) Flutter's in-memory image cache leeren (NetworkImage)
         if (oldUrl != null && oldUrl.isNotEmpty) {
           await NetworkImage(oldUrl).evict();
+          // 2) cached_network_image hat einen eigenen disk+memory cache
+          await CachedNetworkImage.evictFromCache(oldUrl);
         }
 
-        // Update the model in place — the signed URL is unique per upload
-        // so no extra cache-busting is needed.
-        widget.member.photo_url = signedUrl;
+        // Update the model in place
+        widget.member.photo_url = newUrl;
       }
 
       final updated = await MemberRepository().updateContactInfo(
@@ -148,6 +154,22 @@ class _MemberEditScreenState extends State<MemberEditScreen> {
       widget.member.empl = updated.empl;
       // Atomar updaten — sonst sind birthday_text und age stale.
       widget.member.setBirthday(updated.birthday);
+
+      // AppState kann auf eine ANDERE Instanz desselben Members zeigen
+      // (z.B. wenn die Liste vom AppBar-Avatar geladen wurde). Damit der
+      // AppBar-Avatar das neue Bild zeigt, müssen wir die Felder dort
+      // ebenfalls synchronisieren.
+      final loggedIn = AppState.instance.member.value;
+      if (loggedIn != null && loggedIn.id == widget.member.id) {
+        loggedIn
+          ..email = updated.email
+          ..mobile = updated.mobile
+          ..job = updated.job
+          ..empl = updated.empl
+          ..photo_url = widget.member.photo_url;
+        loggedIn.setBirthday(updated.birthday);
+        AppState.instance.notifyMemberChanged();
+      }
       if (mounted) GoRouter.of(context).pop();
     } catch (e) {
       if (mounted) {

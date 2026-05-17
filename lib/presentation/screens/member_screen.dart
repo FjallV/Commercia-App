@@ -1,9 +1,10 @@
 import 'package:app_bar_with_search_switch/app_bar_with_search_switch.dart';
+import 'package:commercia/app_state.dart';
 import 'package:commercia/data/models/member_model.dart';
 import 'package:commercia/data/models/member_viewmodel.dart';
 import 'package:commercia/data/repositories/member_repository.dart';
-import 'package:commercia/presentation/widgets/app_bar_user_avatar.dart';
 import 'package:commercia/presentation/styles/styles.dart';
+import 'package:commercia/presentation/widgets/app_bar_user_avatar.dart';
 import 'package:commercia/presentation/widgets/member_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -38,7 +39,17 @@ class _MemberScreenState extends State<MemberScreen> {
       }
     });
     _scrollController.addListener(_onScroll);
+    // Wenn der eigene User editiert wurde (z.B. neues Foto), reloaden wir
+    // die Liste, damit auch andere Karten aktuelle Daten zeigen.
+    AppState.instance.member.addListener(_onAppStateMemberChanged);
     _members = getData();
+  }
+
+  void _onAppStateMemberChanged() {
+    if (!mounted) return;
+    setState(() {
+      _members = viewModel.load();
+    });
   }
 
   void _onScroll() {
@@ -55,6 +66,7 @@ class _MemberScreenState extends State<MemberScreen> {
     if (widget.isSearchMode == null) {
       _isSearchMode.dispose();
     }
+    AppState.instance.member.removeListener(_onAppStateMemberChanged);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -181,8 +193,7 @@ class _MemberScreenState extends State<MemberScreen> {
                                       member.search.contains(
                                           searchText.value.toLowerCase()) &&
                                       (_selectedClubFilter == 0 ||
-                                          member.club ==
-                                              _selectedClubFilter) &&
+                                          member.club == _selectedClubFilter) &&
                                       (_filterCC && _filterAemtli
                                           ? member.role != 0
                                           : _filterCC
@@ -268,6 +279,10 @@ class UserCard extends StatefulWidget {
 }
 
 class _UserCardState extends State<UserCard> {
+  // Bumped after returning from member_details so a freshly uploaded
+  // avatar replaces the one currently held by CachedNetworkImage.
+  int _avatarVersion = 0;
+
   @override
   Widget build(BuildContext context) {
     final member = widget.member;
@@ -286,12 +301,16 @@ class _UserCardState extends State<UserCard> {
             child: InkWell(
               borderRadius: BorderRadius.circular(15),
               onTap: () {
-                context.pushNamed(
+                context
+                    .pushNamed(
                   'member_details',
                   pathParameters: {'id': member.id},
                   extra: widget.allMembers,
-                ).then((_) {
-                  if (mounted) setState(() {});
+                )
+                    .then((_) {
+                  if (mounted) {
+                    setState(() => _avatarVersion++);
+                  }
                 });
               },
               // onTap: () {
@@ -336,7 +355,10 @@ class _UserCardState extends State<UserCard> {
                   Positioned(
                     top: 16,
                     right: 16,
-                    child: MemberAvatar.medium(member: member),
+                    child: KeyedSubtree(
+                      key: ValueKey(_avatarVersion),
+                      child: MemberAvatar.medium(member: member),
+                    ),
                   ),
                 ],
               ),

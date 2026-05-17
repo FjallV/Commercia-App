@@ -30,9 +30,9 @@ class MemberRepository {
 
     // Bierfamilie
     String bfam_text = switch (result['bfam']) {
+      0 => 'Gründer',
       1 => 'Vita',
       2 => 'Slow',
-      3 => '',
       _ => '',
     };
 
@@ -88,6 +88,7 @@ class MemberRepository {
       balt: result['balt'],
       bfam: result['bfam'],
       bfam_text: bfam_text,
+      farbenbruder: result['farbenbruder'],
       search: search,
       photo_url: result['photo_url'],
     );
